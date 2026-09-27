@@ -2,3 +2,22 @@ __pycache__/
 *.pyc
 .ipynb_checkpoints/
 .DS_Store
+
+# LaTeX build artifacts (report/term_project_report.tex is the tracked source)
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.bbl
+*.bcf
+*.blg
+*.run.xml
+*.nav
+*.snm
+*.vrb
+*.xdv
