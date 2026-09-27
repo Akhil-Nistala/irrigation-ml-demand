@@ -33,6 +33,18 @@ irrigation-ml-demand/
 
 **New to any of this?** Read [`EXPLAINER.md`](EXPLAINER.md) first — it explains FAO-56, every formula used, every ML model (what it is and why it's used here), and every metric, from scratch, with no assumed background.
 
+## Which notebook should I open?
+
+There are two notebooks because they cover different scopes — both are executed and reproducible, and they overlap deliberately on the modelling section:
+
+| | `irrigation_ml_project.ipynb` | `model_training.ipynb` |
+|---|---|---|
+| **Scope** | Full pipeline, start to finish | Modelling stage only |
+| **Covers** | Dataset generation (calls `src/generate_dataset.py`) → EDA (scatter plots, seasonal pattern) → train/test split → model training → evaluation → feature importance | Load the already-generated `data/irrigation_dataset.csv` → train/test split → model training → evaluation → feature importance → save trained models |
+| **Use it when** | You want to see (or rerun) *everything*, including how the synthetic data itself was constructed | You only care about the ML modelling and want a shorter notebook to walk through (e.g. for a viva focused on the modelling approach) |
+
+They are intentionally redundant on the training/evaluation code (same models, same results) — pick whichever matches what you're trying to show or explain.
+
 ## Quick start
 
 Everything is already generated and committed to this folder (dataset, trained models, figures, executed notebooks), so you can just **read** `model_training.ipynb`, `irrigation_ml_project.ipynb`, or `report/term_project_report.md` directly. To reproduce from scratch:

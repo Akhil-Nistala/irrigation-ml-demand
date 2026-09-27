@@ -4,6 +4,14 @@ This document explains **every concept, formula, and code decision** used in thi
 project — assuming no prior background in either irrigation engineering or machine
 learning. Read it top to bottom, or jump to a section using the table of contents.
 
+**Where the code actually lives:** the dataset-generation logic (Sections 3–9) is
+in `src/generate_dataset.py`; the model-training and evaluation logic (Sections
+11–17) is executed in two notebooks — `irrigation_ml_project.ipynb` (the full
+pipeline: generation + EDA + training in one) and `model_training.ipynb`
+(modelling only, loading the already-generated CSV). See the README's
+["Which notebook should I open?"](README.md#which-notebook-should-i-open)
+for which one to use.
+
 ## Table of contents
 
 1. [What problem are we actually solving?](#1-what-problem-are-we-actually-solving)
