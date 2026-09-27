@@ -21,11 +21,10 @@ learning. Read it top to bottom, or jump to a section using the table of content
 13. [Model 1: Linear Regression](#13-model-1-linear-regression)
 14. [Model 2: Decision Tree Regressor](#14-model-2-decision-tree-regressor)
 15. [Model 3: Random Forest Regressor](#15-model-3-random-forest-regressor)
-16. [Model 4 (bonus): Gradient Boosting Regressor](#16-model-4-bonus-gradient-boosting-regressor)
-17. [Evaluation metrics, explained one by one](#17-evaluation-metrics-explained-one-by-one)
-18. [Feature importance — what it is and how it's computed](#18-feature-importance--what-it-is-and-how-its-computed)
-19. [Reading the actual results](#19-reading-the-actual-results)
-20. [Glossary (quick lookup)](#20-glossary-quick-lookup)
+16. [Evaluation metrics, explained one by one](#16-evaluation-metrics-explained-one-by-one)
+17. [Feature importance — three complementary metrics, explained](#17-feature-importance--three-complementary-metrics-explained)
+18. [Reading the actual results](#18-reading-the-actual-results)
+19. [Glossary (quick lookup)](#19-glossary-quick-lookup)
 
 ---
 
@@ -53,8 +52,8 @@ turning those three things into a number: the **FAO-56 crop water balance**
 1. Builds a dataset of daily weather + crop information using this method (Sections 3–9).
 2. Asks: *can a machine-learning model learn to predict the final answer (irrigation
    demand) directly from the raw weather + crop inputs*, without explicitly running
-   the FAO-56 equations every time? (Sections 10–18)
-3. Checks whether the answer it learns actually makes engineering sense (Section 19).
+   the FAO-56 equations every time? (Sections 10–17)
+3. Checks whether the answer it learns actually makes engineering sense (Section 18).
 
 ---
 
@@ -398,8 +397,9 @@ to still be somewhat hot today) without becoming so sticky that the weather neve
 changes.
 
 This directly produces the **month-to-month persistence** you'd see in a real
-temperature or humidity time series (Figure `07_timeseries_demand.png` shows this
-pattern in the final target variable too).
+temperature or humidity time series — and the same persistence shows up directly
+in the final target variable, which is exactly why `previous_irrigation_mm`
+turns out to be such a strong predictor (Section 17).
 
 ### 9.3 Solar radiation via the clearness index
 
@@ -496,12 +496,12 @@ searching for the best $f$ is called **training** or **fitting** the model
 Once trained, the model can be given a **brand-new** $X$ it has never seen before
 (the test set) and produce a prediction $\hat{y} = f(X)$. How close $\hat{y}$ comes
 to the true (but, in a real deployment, initially unknown) $y$ is what the
-**evaluation metrics** (Section 17) measure.
+**evaluation metrics** (Section 16) measure.
 
 Different algorithms search for $f$ in different ways and with different
 assumptions about what shape $f$ is allowed to take — that's exactly what
 distinguishes Linear Regression from a Decision Tree from a Random Forest
-(Sections 13–16).
+(Sections 13–15).
 
 ---
 
@@ -547,7 +547,7 @@ the 8 raw features, no additional configuration needed.
 completely interpretable (you can literally read off "each mm of rainfall reduces
 predicted demand by $b_i$ mm"), and gives a floor to compare fancier models
 against. Its key limitation, visible directly in this project's results (Section
-19): it assumes a *constant, additive* relationship everywhere, so it cannot
+18): it assumes a *constant, additive* relationship everywhere, so it cannot
 represent the genuine **nonlinear interactions** in the underlying physics (e.g.
 the fact that wind speed's effect on ET0 depends on how dry the air already is,
 or that Kc's effect switches abruptly between growth stages) — and it can predict
@@ -619,49 +619,26 @@ allowed to consider (which further de-correlates the individual trees).
 `n_jobs=-1` just means "use all available CPU cores to train the 300 trees in
 parallel," a computational convenience with no effect on the model's predictions.
 
-**Why it performed best (tied with Gradient Boosting) in this project:** exactly
-because irrigation demand genuinely depends on nonlinear interactions between
-weather, Kc, and rainfall (a direct consequence of the nonlinear Penman-Monteith
-physics used to generate the data) — precisely the kind of relationship tree-based
-models can represent and linear regression cannot.
+**Why it performed best in this project:** exactly because irrigation demand
+genuinely depends on nonlinear interactions between weather, Kc, and rainfall (a
+direct consequence of the nonlinear Penman-Monteith physics used to generate the
+data) — precisely the kind of relationship tree-based models can represent and
+linear regression cannot.
+
+*(This project deliberately keeps the model set to these three — Linear
+Regression, Decision Tree, Random Forest — rather than also including a
+boosting-based ensemble, so that every result and every figure can be attributed
+to one of exactly three well-understood, clearly-differentiated approaches.)*
 
 ---
 
-## 16. Model 4 (bonus): Gradient Boosting Regressor
-
-**The idea:** also an ensemble of many decision trees, but built completely
-differently from Random Forest. Instead of training many trees *independently in
-parallel* and averaging them (bagging), Gradient Boosting builds trees
-**sequentially, one at a time**, where **each new tree is trained specifically to
-correct the mistakes (residual errors) of all the trees built so far**. Predictions
-are then the **sum** (not average) of all the trees' outputs, usually scaled down
-by a small "learning rate" so no single tree dominates.
-
-Analogy: Random Forest is like asking 300 independent experts for their opinion
-and averaging (each expert never sees what the others said). Gradient Boosting is
-like a team where each new member is specifically told "here's exactly where the
-team's answer so far was wrong — focus on fixing *that*," and the final answer
-combines everyone's incremental corrections.
-
-**How it's used here:** `sklearn.ensemble.GradientBoostingRegressor(random_state=42)`
-with default hyperparameters (this project didn't need to hand-tune it — the
-default settings already performed competitively).
-
-**Why include it if Random Forest already works well?** It's a standard, very
-strong performer on exactly this kind of structured/tabular data, and comparing it
-against Random Forest is a natural "does a more sophisticated ensemble method help
-further?" check — in this project's results, it edged out Random Forest very
-slightly (R² 0.972 vs. 0.970), essentially a statistical tie.
-
----
-
-## 17. Evaluation metrics, explained one by one
+## 16. Evaluation metrics, explained one by one
 
 After training, each model predicts `irrigation_demand_mm` for the **400 held-out
 test days** it never saw during training. We then need a way to numerically score
 "how good were these predictions?" This project reports four things per model:
 
-### 17.1 MAE — Mean Absolute Error
+### 16.1 MAE — Mean Absolute Error
 
 $$\text{MAE} = \frac{1}{n}\sum_{i=1}^{n} |y_i - \hat{y}_i|$$
 
@@ -673,7 +650,7 @@ daily prediction is off by 0.42 mm, in either direction." It's easy to interpret
 directly and is **not disproportionately punished by a few large errors** — every
 day's error contributes to the average in direct proportion to its size.
 
-### 17.2 RMSE — Root Mean Squared Error
+### 16.2 RMSE — Root Mean Squared Error
 
 $$\text{RMSE} = \sqrt{\frac{1}{n}\sum_{i=1}^n (y_i - \hat{y}_i)^2}$$
 
@@ -689,7 +666,7 @@ true (RMSE ≥ MAE), and the *size of the gap* tells you something extra: a bigg
 gap between RMSE and MAE means the model has a few days with noticeably larger
 errors than its "typical" day, rather than uniformly-sized errors everywhere.
 
-### 17.3 R² — Coefficient of Determination
+### 16.3 R² — Coefficient of Determination
 
 $$R^2 = 1 - \frac{\sum_i (y_i - \hat{y}_i)^2}{\sum_i (y_i - \bar{y})^2}$$
 
@@ -708,11 +685,11 @@ model successfully explain, compared to just always guessing the average?"**
 
 This project's Random Forest R² of 0.970 means the model explains 97% of the
 day-to-day variation in irrigation demand across the test period — a strong
-result, though remember (Section 18 / the report's Discussion) that a large chunk
+result, though remember (Section 17 / the report's Discussion) that a large chunk
 of this is attributable to the `previous_irrigation_mm` persistence feature rather
 than the model deeply "understanding" the weather-to-demand physics from scratch.
 
-### 17.4 Actual mean vs. predicted mean
+### 16.4 Actual mean vs. predicted mean
 
 Simply $\bar{y}$ (average true demand across the 400 test days) versus $\bar{\hat{y}}$
 (average predicted demand). This isn't a measure of day-to-day accuracy at all —
@@ -720,55 +697,135 @@ it's a **systematic bias check**: even a model with mediocre day-to-day accuracy
 could still get the *overall average right by luck/cancellation*, or a model could
 be *consistently* over- or under-predicting even while tracking day-to-day
 fluctuations reasonably (a systematic offset). This project's results show all
-four models' predicted means within 1–2% of the true mean (5.277 mm/day) —
+three models' predicted means within 1–2% of the true mean (5.277 mm/day) —
 i.e., **no model shows a systematic over- or under-prediction bias**; whatever
 error exists is in day-to-day precision, captured instead by MAE/RMSE/R².
 
 ---
 
-## 18. Feature importance — what it is and how it's computed
+## 17. Feature importance — three complementary metrics, explained
 
-For the Random Forest model, `rf.feature_importances_` gives a score for each
-input feature (visualized in `08_feature_importance_rf.png`). Scikit-learn's
-default tree-based feature importance is **Mean Decrease in Impurity (MDI)**,
-sometimes called "Gini importance" (even for regression, where the relevant
-"impurity" is variance rather than the classification-specific Gini index):
+"Which feature mattered most for the prediction?" sounds like a simple question,
+but a **single** importance measure can be misleading — different measures can
+disagree, and each has its own blind spot. This project therefore computes and
+cross-checks **three independent metrics** (`report/feature_importance_summary.csv`,
+figure `07_feature_importance_comparison.png`), rather than reporting just one.
 
-- Every time *any* tree, at *any* split, uses a particular feature to split the
-  data, that split reduces the variance of the target within the resulting
-  groups by some amount.
-- For each feature, sum up **how much total variance reduction** it was
-  responsible for, across every split in every one of the 300 trees, weighted by
-  how many training examples passed through that split.
-- Normalize so all features' importances sum to 1.
+### 17.1 Correlation with target
 
-**In plain terms:** a feature gets a high importance score if it was frequently
-chosen for splits, and those splits were very effective at separating high-demand
-days from low-demand days. This is exactly why `previous_irrigation_mm` dominates
-in this project (Section 19) — because yesterday's demand, thanks to weather
-autocorrelation, is an extremely effective single number for separating "this is
-a high-demand stretch of days" from "this is a low-demand stretch," so trees lean
-on it heavily at their very first splits.
+The simplest possible measure: the **Pearson correlation coefficient** between
+one feature column and the target column, computed across the whole dataset,
+completely ignoring every other feature. It ranges from $-1$ (perfect negative
+linear relationship) to $+1$ (perfect positive linear relationship), with 0
+meaning no *linear* relationship at all. It's a fast, easy-to-understand
+sanity-check baseline — but it has two blind spots: it only detects *linear*
+relationships (it would score a strong U-shaped relationship as ≈0, even though
+that's a very real, very strong pattern), and it doesn't account for other
+features already explaining the same thing (multicollinearity).
 
-**Caveat worth knowing:** MDI importance can be biased toward features with many
-possible distinct values (continuous features get more opportunities to find a
-good split than a 4-category feature like `growth_stage`) — part of why
-`growth_stage`'s importance looks near-zero even though it is not *irrelevant*, it
-is simply **redundant** with the more granular, continuous `crop_coefficient`
-feature that already encodes the same growth-stage information more precisely.
+### 17.2 Random Forest MDI importance
+
+Already explained in the original version of this section: **Mean Decrease in
+Impurity**. For the trained Random Forest, `rf.feature_importances_` gives a
+score for each input feature — every time *any* tree, at *any* split, uses a
+particular feature, that split reduces the variance of the target within the
+resulting groups by some amount; summing this reduction across every split in
+every one of the 300 trees (normalized to sum to 1) gives each feature's MDI
+importance. This is computed purely from **training-set** tree-building
+behaviour.
+
+**Caveat:** MDI importance can be biased toward features with many possible
+distinct values (continuous features get more opportunities to find a good
+split than a 4-category feature like `growth_stage`), and — because it's
+computed from the training data the trees were built on — it doesn't directly
+tell you how much that feature actually helps predict *new* data.
+
+### 17.3 Permutation importance
+
+The most direct answer to "what feature was actually important **for
+prediction**": take the already-trained Random Forest and the **held-out test
+set** (400 days the model has never seen). For one feature at a time:
+1. Shuffle just that one column's values across the test rows (breaking any
+   real relationship it has with the target, while keeping every other column
+   untouched).
+2. Feed this scrambled test set back through the trained model and measure how
+   much the R² score (Section 16.3) *drops* compared to the unscrambled test
+   set.
+3. Repeat the shuffle 30 times (each with a different random shuffle) and
+   report the average drop and its standard deviation — repeating gives both a
+   more reliable estimate and an honest sense of how *consistent* that
+   feature's importance is.
+
+A feature whose shuffling barely changes R² wasn't really needed for
+prediction; a feature whose shuffling collapses R² was critical. Because this
+is measured **on the test set**, using the **already-fixed, already-trained**
+model, it directly answers "how much does the model's real-world prediction
+accuracy depend on this feature" — unlike MDI, which only describes how the
+trees were built.
+
+**In code:** `sklearn.inspection.permutation_importance(rf, X_test, y_test, n_repeats=30, random_state=42, scoring="r2")`.
+
+### 17.4 Putting the three together
+
+| Feature | Correlation with target | RF MDI importance | RF permutation importance (mean ± std) |
+|---|---|---|---|
+| `previous_irrigation_mm` | 0.840 | 0.713 | **0.579 ± 0.040** |
+| `crop_coefficient` | 0.551 | 0.107 | 0.222 ± 0.014 |
+| `rainfall_mm` | −0.404 | 0.106 | 0.170 ± 0.016 |
+| `solar_radiation_MJ_m2_day` | 0.658 | 0.033 | 0.058 ± 0.008 |
+| `temperature_C` | 0.360 | 0.016 | 0.030 ± 0.003 |
+| `humidity_percent` | −0.563 | 0.012 | 0.026 ± 0.003 |
+| `wind_speed_mps` | −0.024 | 0.012 | 0.019 ± 0.002 |
+| `growth_stage` | 0.385 | 0.001 | ~0.000 |
+
+**Reading this table:**
+
+- `previous_irrigation_mm` tops **all three** metrics — because yesterday's
+  demand, thanks to weather autocorrelation (Section 9.2), is an extremely
+  effective single number for separating "this is a high-demand stretch of
+  days" from "this is a low-demand stretch." This is a genuine feature of the
+  data-generating process, not a modelling artefact.
+- `crop_coefficient` and `rainfall_mm` are next on every metric — matching
+  their *direct*, non-ET0-mediated role in the FAO-56 water balance
+  ($ET_c = ET_0 \times K_c$; $\text{Net} = ET_c - P_e$).
+- **MDI and permutation importance agree closely here**, and that agreement is
+  itself useful evidence: since the two methods are computed in completely
+  different ways (training-time split quality vs. test-time accuracy impact),
+  their agreement means the ranking isn't an artefact of either method's
+  particular blind spots.
+- The **correlation column tells a slightly different, still-consistent
+  story**: notice `solar_radiation_MJ_m2_day` actually has a *higher raw
+  correlation* (0.658) than `crop_coefficient` (0.551) or `rainfall_mm`
+  (−0.404), yet ranks *below* them in both RF-based importance measures. This
+  is a good illustration of why correlation alone can mislead: solar radiation
+  is correlated with the target partly *because* it's correlated with the
+  season (and therefore indirectly with rainfall and Kc, which also vary by
+  season) — once the Random Forest already has `crop_coefficient` and
+  `rainfall_mm` available, solar radiation's *additional, independent*
+  predictive contribution is smaller than its raw correlation alone would
+  suggest.
+- The permutation-importance **standard deviations** (from the 30 repeats)
+  show `previous_irrigation_mm`'s effect is both large and highly consistent,
+  while several weaker weather features have importances close to (or
+  overlapping) zero once repeat-to-repeat variability is accounted for — their
+  individual contribution, given the stronger features are already present, is
+  genuinely small, not just small-but-uncertain.
+- `growth_stage`'s near-zero importance on **every** metric is not a failure —
+  `crop_coefficient` already encodes the same underlying information (and does
+  so more precisely, as a continuous value), so the model correctly treats
+  `growth_stage` as redundant.
 
 ---
 
-## 19. Reading the actual results
+## 18. Reading the actual results
 
-(Full numbers: `report/model_comparison.csv`; full discussion: `report/term_project_report.md`, Sections 5–7.)
+(Full numbers: `report/model_comparison.csv` and `report/feature_importance_summary.csv`; full discussion: `report/term_project_report.md`, Sections 5–7.)
 
 | Model | MAE | RMSE | R² |
 |---|---|---|---|
 | Linear Regression | 0.717 | 1.012 | 0.924 |
 | Decision Tree | 0.656 | 0.999 | 0.926 |
 | Random Forest | 0.420 | 0.639 | 0.970 |
-| Gradient Boosting | 0.410 | 0.616 | 0.972 |
 
 Tying every concept above together:
 
@@ -777,28 +834,29 @@ Tying every concept above together:
   expected consequence of Section 13's limitation: it cannot represent the
   genuinely nonlinear Penman-Monteith-driven relationship between weather and
   demand.
-- **Random Forest and Gradient Boosting's** much lower error is the direct,
-  expected consequence of Sections 15–16: tree ensembles *can* represent
-  nonlinear thresholds and interactions, and this project's target variable was
-  *constructed* using a nonlinear physical equation — so of course a model
-  family capable of nonlinearity does better.
-- The **monthly average demand chart** (`09_monthly_avg_demand.png`) peaking in
+- **Random Forest's** much lower error is the direct, expected consequence of
+  Section 15: tree ensembles *can* represent nonlinear thresholds and
+  interactions, and this project's target variable was *constructed* using a
+  nonlinear physical equation — so of course a model family capable of
+  nonlinearity does better.
+- The **monthly average demand chart** (`08_monthly_avg_demand.png`) peaking in
   March–May and collapsing in the monsoon is a direct, physically-expected
   consequence of Section 9.1's climatology (hot/dry pre-monsoon → high ET0, low
   rain → high demand; monsoon → high rain, high humidity, cloudier → low ET0
   and lots of effective rainfall → low or zero demand).
 - **Feature importance's** ranking (previous demand ≫ Kc ≈ rainfall > weather
-  variables) directly reflects Section 18's explanation, and matches which
+  variables) directly reflects Section 17's explanation, and matches which
   variables enter the FAO-56 water balance most *directly* (Kc and rainfall,
   Section 6–7) versus only *indirectly* through ET0 (temperature, humidity, wind,
-  solar radiation, Section 4).
+  solar radiation, Section 4) — and this ranking is **confirmed across all
+  three independent importance metrics**, not just one.
 
 Nothing in the results is a coincidence — every pattern traces back to a specific
 modelling or physical choice documented in this file.
 
 ---
 
-## 20. Glossary (quick lookup)
+## 19. Glossary (quick lookup)
 
 | Term | One-line meaning |
 |---|---|
@@ -820,9 +878,11 @@ modelling or physical choice documented in this file.
 | **Target (y)** | The output variable the model is trying to predict |
 | **Training** | The process of a model learning parameters from example data |
 | **Overfitting** | A model memorizing training-data quirks instead of learning general patterns, hurting new-data performance |
-| **Bagging** | Training many models on different random data samples and averaging their predictions |
-| **Boosting** | Training many models sequentially, each correcting the previous ones' errors |
+| **Bagging** | Training many models on different random bootstrap samples and averaging their predictions (what Random Forest does) |
 | **MAE** | Average absolute prediction error, in the target's own units |
 | **RMSE** | Like MAE but penalizes large errors more heavily |
 | **R²** | Fraction of the target's natural variation explained by the model |
-| **Feature importance** | A score showing how much a model relied on each input feature |
+| **Feature importance** | A score showing how much a model relied on each input feature — this project uses three independent kinds (see below) |
+| **Correlation (Pearson)** | Simplest importance-adjacent measure: raw linear association between one feature and the target, ignoring all other features |
+| **MDI importance** (Mean Decrease in Impurity) | Tree-based importance: how much a feature reduced target variance across all training-set tree splits |
+| **Permutation importance** | Shuffle one feature in the test set and measure the resulting drop in test-set R² — the most direct "did this feature help prediction" measure |

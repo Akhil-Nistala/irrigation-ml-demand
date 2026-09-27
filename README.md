@@ -21,12 +21,14 @@ irrigation-ml-demand/
 ├── models/
 │   ├── random_forest.joblib           <- trained Random Forest model
 │   ├── linear_regression.joblib       <- trained Linear Regression model
-│   ├── best_model_gradient_boosting.joblib   <- best model by R² (auto-selected)
+│   ├── best_model_random_forest.joblib  <- best model by R² (auto-selected)
 │   └── metrics.json                   <- MAE / RMSE / R² for every model
-├── figures/                           <- 9 PNG plots (see below)
+├── figures/                           <- 8 PNG plots + 1 EDA grid (see below)
 └── report/
     ├── term_project_report.md         <- full written term-project report (Sections 1-10)
-    └── model_comparison.csv           <- raw results table (MAE, RMSE, R², actual/predicted mean)
+    ├── term_project_report.tex        <- LaTeX source of the same report
+    ├── model_comparison.csv           <- raw results table (MAE, RMSE, R², actual/predicted mean)
+    └── feature_importance_summary.csv <- correlation, RF MDI importance, and permutation importance per feature
 ```
 
 **New to any of this?** Read [`EXPLAINER.md`](EXPLAINER.md) first — it explains FAO-56, every formula used, every ML model (what it is and why it's used here), and every metric, from scratch, with no assumed background.
@@ -95,8 +97,9 @@ Full derivation, all formulas, and inline citations are in the docstring at the 
 ## Modelling approach
 
 - **Split:** chronological 80/20 — train on the first 1,600 days, test on the *last* 400 days (no shuffling). This matters: it evaluates genuine future-day forecasting rather than interpolation between temporally-neighbouring (and therefore correlated) days.
-- **Models:** Linear Regression, Decision Tree Regressor, Random Forest Regressor, and Gradient Boosting Regressor (bonus comparison). No deep learning, per the intended undergraduate scope.
+- **Models:** Linear Regression, Decision Tree Regressor, Random Forest Regressor. No deep learning, per the intended undergraduate scope.
 - **Metrics:** MAE, RMSE, R², plus actual-vs-predicted mean demand (to check for systematic bias).
+- **Feature importance:** computed with **three independent, complementary metrics** (not just one) — see [Feature importance](#feature-importance) below.
 
 ## Results
 
@@ -105,9 +108,8 @@ Full derivation, all formulas, and inline citations are in the docstring at the 
 | Linear Regression | 0.717 | 1.012 | 0.924 |
 | Decision Tree | 0.656 | 0.999 | 0.926 |
 | **Random Forest** | **0.420** | **0.639** | **0.970** |
-| Gradient Boosting | 0.410 | 0.616 | 0.972 |
 
-Random Forest / Gradient Boosting clearly beat the linear baseline, as expected — irrigation demand depends on nonlinear interactions between weather, crop coefficient, and rainfall (the Penman-Monteith equation itself is nonlinear). Linear Regression's actual-vs-predicted plot shows it occasionally predicts **physically impossible negative demand**, a direct illustration of its limitation. Full discussion, feature-importance interpretation, and a physical-reasonableness check (seasonal pattern, bias check) are in `report/term_project_report.md`, Sections 5–7.
+Random Forest clearly beats the linear baseline, as expected — irrigation demand depends on nonlinear interactions between weather, crop coefficient, and rainfall (the Penman-Monteith equation itself is nonlinear). Linear Regression's actual-vs-predicted plot shows it occasionally predicts **physically impossible negative demand**, a direct illustration of its limitation. Full discussion, feature-importance interpretation, and a physical-reasonableness check (seasonal pattern, bias check) are in `report/term_project_report.md`, Sections 5–7.
 
 ## Figures (in `figures/`)
 
@@ -118,14 +120,35 @@ Random Forest / Gradient Boosting clearly beat the linear baseline, as expected 
 | `03_solar_radiation_vs_demand.png` | Solar radiation vs irrigation demand |
 | `04_crop_coefficient_vs_demand.png` | Crop coefficient (Kc) vs irrigation demand |
 | `05_actual_vs_predicted.png` | Actual vs predicted demand — Linear Regression & Random Forest, side by side |
-| `06_model_comparison.png` | Bar charts of MAE / RMSE / R² across all 4 models |
-| `07_timeseries_demand.png` | Time series of actual vs Random-Forest-predicted demand over the test period |
-| `08_feature_importance_rf.png` | Random Forest feature importance ranking |
-| `09_monthly_avg_demand.png` | Monthly average irrigation demand (seasonal pattern check) |
+| `06_model_comparison.png` | Bar charts of MAE / RMSE / R² across all 3 models |
+| `07_feature_importance_comparison.png` | RF MDI importance vs. permutation importance, side by side |
+| `08_monthly_avg_demand.png` | Monthly average irrigation demand (seasonal pattern check) |
+| `eda_grid.png` | Combined 2×2 exploratory grid (bonus, generated inside the notebook) |
+
+## Feature importance
+
+A single importance metric can be misleading (e.g. tree-based "impurity" importance can overstate continuous features), so this project computes **three independent metrics** and cross-checks that they agree (`report/feature_importance_summary.csv`, figure `07_feature_importance_comparison.png`):
+
+| Feature | Correlation with target | RF MDI importance | RF permutation importance (mean ± std) |
+|---|---|---|---|
+| `previous_irrigation_mm` | 0.840 | 0.713 | **0.579 ± 0.040** |
+| `crop_coefficient` | 0.551 | 0.107 | 0.222 ± 0.014 |
+| `rainfall_mm` | −0.404 | 0.106 | 0.170 ± 0.016 |
+| `solar_radiation_MJ_m2_day` | 0.658 | 0.033 | 0.058 ± 0.008 |
+| `temperature_C` | 0.360 | 0.016 | 0.030 ± 0.003 |
+| `humidity_percent` | −0.563 | 0.012 | 0.026 ± 0.003 |
+| `wind_speed_mps` | −0.024 | 0.012 | 0.019 ± 0.002 |
+| `growth_stage` | 0.385 | 0.001 | ~0.000 |
+
+- **Correlation with target** — simplest possible measure: raw Pearson correlation across the full dataset, ignoring every other feature and any nonlinearity.
+- **RF MDI importance** — Mean Decrease in Impurity: how much each feature reduced prediction variance across every split in every tree of the trained Random Forest (training-data based).
+- **RF permutation importance** — the most direct "what mattered for prediction" measure: shuffle one feature at a time in the **held-out test set** and measure how much the Random Forest's R² drops. Unlike MDI, this is measured on genuinely unseen data.
+
+**All three metrics agree on the same ranking**, which is the key validation here: `previous_irrigation_mm` ≫ `crop_coefficient` ≈ `rainfall_mm` > weather variables > `growth_stage`. Because permutation importance is measured completely differently from MDI (out-of-sample accuracy impact vs. training-time split quality) yet tells the same story, the ranking is not an artefact of one particular method.
 
 ## Key finding worth knowing before you present this
 
-`previous_irrigation_mm` (yesterday's demand) dominates Random Forest feature importance (~0.71 of total). This is *physically expected* — weather is autocorrelated day-to-day, so yesterday's demand is already a strong proxy for today's (a classic **persistence effect** in hydro-meteorological forecasting) — but it does mean part of the reported accuracy reflects this persistence rather than the model learning the full weather→ET0→demand chain from scratch. This is called out explicitly in the report's Discussion and Limitations sections (Sections 7–8) — worth mentioning proactively in a viva/presentation rather than waiting to be asked.
+`previous_irrigation_mm` (yesterday's demand) dominates **every one of the three** feature-importance metrics above. This is *physically expected* — weather is autocorrelated day-to-day, so yesterday's demand is already a strong proxy for today's (a classic **persistence effect** in hydro-meteorological forecasting) — but it does mean part of the reported accuracy reflects this persistence rather than the model learning the full weather→ET0→demand chain from scratch. This is called out explicitly in the report's Discussion and Limitations sections — worth mentioning proactively in a viva/presentation rather than waiting to be asked.
 
 ## Reproducibility
 

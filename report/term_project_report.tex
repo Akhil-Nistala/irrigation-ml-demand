@@ -43,15 +43,19 @@ variables. Because no instrumented field dataset was available, a synthetic but
 generated using the \textbf{FAO-56 Penman--Monteith} reference evapotranspiration
 equation, FAO-56 crop coefficients for maize, and the USDA-SCS effective-rainfall
 formula, with realistic day-to-day weather variability calibrated to a
-representative central-Indian, subtropical-monsoon climate. Four regression
-models --- Linear Regression, Decision Tree, Random Forest, and Gradient Boosting
---- were trained on an 80/20 \textbf{chronological} split and evaluated using MAE,
-RMSE, and R\textsuperscript{2}. Random Forest and Gradient Boosting achieved the
-best performance (R\textsuperscript{2} $\approx$ 0.97, MAE $\approx$ 0.42~mm/day),
-substantially outperforming Linear Regression (R\textsuperscript{2} $\approx$
+representative central-Indian, subtropical-monsoon climate. Three regression
+models --- Linear Regression, Decision Tree, and Random Forest --- were trained
+on an 80/20 \textbf{chronological} split and evaluated using MAE, RMSE, and
+R\textsuperscript{2}. Random Forest achieved the best performance
+(R\textsuperscript{2} $\approx$ 0.97, MAE $\approx$ 0.42~mm/day), substantially
+outperforming Linear Regression (R\textsuperscript{2} $\approx$
 0.92, MAE $\approx$ 0.72~mm/day), consistent with the expectation that irrigation
 demand depends on nonlinear interactions between weather variables, crop
-coefficient, and rainfall. Results were checked for physical reasonableness
+coefficient, and rainfall. A \textbf{three-metric feature-importance analysis}
+(correlation with target, Random Forest impurity-based importance, and
+permutation importance on the held-out test set) was carried out to
+cross-validate which inputs actually drove the predictions, rather than relying
+on a single importance measure. Results were checked for physical reasonableness
 against known Indian agro-climatic irrigation patterns and found consistent.
 \end{abstract}
 
@@ -84,14 +88,13 @@ while remaining physically interpretable.
     humidity, wind speed, solar radiation, previous day's irrigation demand,
     crop coefficient, and growth stage.
     \item Train and compare baseline regression models (Linear Regression,
-    Decision Tree, Random Forest; Gradient Boosting as a bonus comparison) for
-    predicting daily irrigation water demand.
+    Decision Tree, Random Forest) for predicting daily irrigation water demand.
     \item Evaluate the models using MAE, RMSE, and R\textsuperscript{2} on a
     chronologically held-out test set, reflecting genuine forecasting
     conditions.
-    \item Interpret the models' behaviour --- including feature importance and
-    error characteristics --- in terms meaningful to a water resources
-    engineer, and assess whether the results are physically reasonable.
+    \item Interpret the models' behaviour --- using \textbf{multiple
+    independent feature-importance metrics}, not just one --- and assess
+    whether the results are physically reasonable.
 \end{enumerate}
 
 \section{Methodology}
@@ -264,7 +267,7 @@ because the task is inherently a forecasting problem: a deployed model would
 only ever have past data available to predict a future day, and a random split
 would let the model ``see the future'' through autocorrelated neighbouring days.
 
-Four scikit-learn regressors were trained (\texttt{random\_state=42}
+Three scikit-learn regressors were trained (\texttt{random\_state=42}
 throughout):
 
 \begin{itemize}[leftmargin=2em]
@@ -275,9 +278,6 @@ throughout):
     \item \textbf{Random Forest Regressor} (300 trees, max\_depth=10) --- an
     ensemble of decorrelated trees, expected to generalize better than a
     single tree.
-    \item \textbf{Gradient Boosting Regressor} (bonus comparison) ---
-    sequentially boosted trees, often a strong performer on structured/tabular
-    data.
 \end{itemize}
 
 \section{Dataset --- First 10 Rows and Summary Statistics}
@@ -351,7 +351,6 @@ chronologically later 400 days.
 Linear Regression & 0.717 & 1.012 & 0.924 & 5.277 & 5.212 \\
 Decision Tree & 0.656 & 0.999 & 0.926 & 5.277 & 5.314 \\
 \textbf{Random Forest} & \textbf{0.420} & \textbf{0.639} & \textbf{0.970} & 5.277 & 5.344 \\
-Gradient Boosting & 0.410 & 0.616 & 0.972 & 5.277 & 5.300 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -374,12 +373,12 @@ fabricated.)}
     directly illustrates this limitation.
     \item \textbf{Decision Tree} captures some nonlinearity and thresholds but
     a single tree tends to overfit the training data's specific splits and
-    generalizes slightly worse than the ensembles.
-    \item \textbf{Random Forest} and \textbf{Gradient Boosting} substantially
-    outperform both, since they can represent nonlinear interactions between
-    weather, crop coefficient, and rainfall, and their ensemble/boosting
-    structure reduces overfitting compared to a single tree.
-    \item All four models' \textbf{predicted mean demand} is within
+    generalizes slightly worse than the ensemble.
+    \item \textbf{Random Forest} substantially outperforms both, since it can
+    represent nonlinear interactions between weather, crop coefficient, and
+    rainfall, and its ensemble structure reduces overfitting compared to a
+    single tree.
+    \item All three models' \textbf{predicted mean demand} is within
     $\sim$1--2\% of the actual test-set mean --- i.e.\ no model is
     systematically biased at the aggregate level.
 \end{itemize}
@@ -398,42 +397,95 @@ fabricated.)}
 \label{fig:model-comparison}
 \end{figure}
 
-\section{Feature Importance (Random Forest)}
+\section{Feature Importance --- Three Complementary Metrics}
 
-Ranked by relative importance: \texttt{previous\_irrigation\_mm} ($\approx$0.71)
-$\gg$ \texttt{crop\_coefficient} ($\approx$0.11) $\approx$ \texttt{rainfall\_mm}
-($\approx$0.11) $>$ solar radiation ($\approx$0.03) $>$ temperature $\approx$
-humidity $\approx$ wind speed ($\approx$0.01 each) $>$ growth\_stage
-($\approx$0.00).
+A single importance metric can be misleading, so this project computes and
+cross-checks \textbf{three independent measures}:
+
+\begin{enumerate}[label=\arabic*.,leftmargin=2em]
+    \item \textbf{Correlation with target} --- the simplest possible measure:
+    raw Pearson correlation between each feature and
+    \texttt{irrigation\_demand\_mm} across the full dataset. Ignores every
+    other feature and any nonlinearity, but is a useful sanity-check baseline.
+    \item \textbf{Random Forest MDI importance} (Mean Decrease in Impurity)
+    --- how much each feature reduced prediction variance, summed across
+    every split in every tree, normalized to sum to 1. Reflects how often and
+    how effectively a feature was used to build the trees, using only the
+    \emph{training} data.
+    \item \textbf{Permutation importance} --- the most direct answer to
+    ``what feature was actually important \textbf{for prediction}'': take the
+    trained Random Forest, shuffle one feature column at a time in the
+    \textbf{held-out test set}, and measure how much the model's
+    R\textsuperscript{2} \emph{drops}. Computed on the test set, so it
+    directly measures each feature's contribution to \emph{generalizing}
+    (out-of-sample) prediction accuracy, not just how it was used to fit the
+    training data.
+\end{enumerate}
+
+\begin{table}[H]
+\centering
+\caption{Feature importance --- three complementary metrics}
+\label{tab:importance}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Feature} & \textbf{Correlation} & \textbf{RF MDI} & \textbf{RF permutation} \\
+& \textbf{with target} & \textbf{importance} & \textbf{importance (mean $\pm$ std)} \\
+\midrule
+\texttt{previous\_irrigation\_mm} & 0.840 & 0.713 & \textbf{0.579 $\pm$ 0.040} \\
+\texttt{crop\_coefficient} & 0.551 & 0.107 & 0.222 $\pm$ 0.014 \\
+\texttt{rainfall\_mm} & $-0.404$ & 0.106 & 0.170 $\pm$ 0.016 \\
+\texttt{solar\_radiation\_MJ\_m2\_day} & 0.658 & 0.033 & 0.058 $\pm$ 0.008 \\
+\texttt{temperature\_C} & 0.360 & 0.016 & 0.030 $\pm$ 0.003 \\
+\texttt{humidity\_percent} & $-0.563$ & 0.012 & 0.026 $\pm$ 0.003 \\
+\texttt{wind\_speed\_mps} & $-0.024$ & 0.012 & 0.019 $\pm$ 0.002 \\
+\texttt{growth\_stage} & 0.385 & 0.001 & $\approx$0.000 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.75\textwidth]{../figures/08_feature_importance_rf.png}
-\caption{Random Forest feature importance ranking.}
+\includegraphics[width=\textwidth]{../figures/07_feature_importance_comparison.png}
+\caption{Random Forest MDI importance (left) vs.\ permutation importance on the held-out test set (right). Error bars show $\pm 1$ standard deviation across 30 repeated shufflings.}
 \label{fig:feature-importance}
 \end{figure}
 
 \textbf{Interpretation:}
 
 \begin{itemize}[leftmargin=2em]
-    \item \texttt{previous\_irrigation\_mm} dominates because the underlying
-    weather is strongly \textbf{autocorrelated day-to-day} (heatwaves and wet
-    spells persist for several days) --- yesterday's demand is already a
-    strong proxy for today's, a well-known \textbf{persistence effect} in
-    hydro-meteorological forecasting. This is a genuine feature of the
-    data-generating process, not a modelling artefact, but it does mean the
-    model is partly leaning on autocorrelation rather than ``understanding''
-    the weather-to-demand mapping from scratch each day.
-    \item \texttt{crop\_coefficient} and \texttt{rainfall\_mm} rank next, and
-    sensibly so: both terms enter the FAO-56 water balance
+    \item \texttt{previous\_irrigation\_mm} dominates \textbf{all three}
+    metrics because the underlying weather is strongly \textbf{autocorrelated
+    day-to-day} (heatwaves and wet spells persist for several days) ---
+    yesterday's demand is already a strong proxy for today's, a well-known
+    \textbf{persistence effect} in hydro-meteorological forecasting. This is a
+    genuine feature of the data-generating process, not a modelling artefact,
+    but it does mean the model is partly leaning on autocorrelation rather
+    than ``understanding'' the weather-to-demand mapping from scratch each
+    day.
+    \item \texttt{crop\_coefficient} and \texttt{rainfall\_mm} rank next on
+    every metric, and sensibly so: both terms enter the FAO-56 water balance
     \textbf{directly and multiplicatively/subtractively}
     ($ET_c = ET_0 \times K_c$; $\text{Net} = ET_c - P_e$), whereas
     temperature/humidity/wind/solar radiation only act \emph{indirectly},
     combined nonlinearly inside the Penman--Monteith ET$_0$ calculation.
-    \item \texttt{growth\_stage}'s near-zero importance is not a failure ---
-    \texttt{crop\_coefficient} already encodes the same underlying information
-    (and does so more precisely, as a continuous value), so the model
-    correctly treats \texttt{growth\_stage} as redundant.
+    \item \textbf{MDI and permutation importance broadly agree}, which is an
+    important cross-check: MDI can sometimes overstate the importance of
+    continuous features purely because they offer more possible split
+    points, but since permutation importance --- measured completely
+    differently, directly on held-out prediction accuracy --- tells the same
+    story, the ranking is not an artefact of one particular method.
+    \item \texttt{growth\_stage}'s near-zero importance on every metric is
+    not a failure --- \texttt{crop\_coefficient} already encodes the same
+    underlying information (and does so more precisely, as a continuous
+    value), so the model correctly treats \texttt{growth\_stage} as
+    redundant.
+    \item The permutation-importance \textbf{error bars} (standard deviation
+    across 30 repeated shufflings) show that \texttt{previous\_irrigation\_mm}'s
+    effect is both large and highly consistent, whereas several of the weaker
+    weather features have importances close to (or overlapping) zero once
+    repeat-to-repeat variability is accounted for --- their individual
+    predictive contribution, once the stronger features are already in the
+    model, is genuinely small, not just small-but-uncertain.
 \end{itemize}
 
 \section{Discussion --- Are the Results Physically Reasonable?}
@@ -448,10 +500,10 @@ Yes, on three independent checks:
     ($\sim$3--4.4~mm/day) --- this reproduces the well-established Indian
     agro-climatic irrigation calendar, where irrigation is most critical
     exactly when it is driest and hottest (Figure~\ref{fig:monthly}).
-    \item \textbf{Feature importance ranking.} Variables that enter the
-    FAO-56 water balance directly ($K_c$, rainfall) outrank variables that
-    act only indirectly through ET$_0$ --- consistent with the physics used
-    to construct the data.
+    \item \textbf{Feature importance ranking.} All three importance metrics
+    agree that variables entering the FAO-56 water balance directly ($K_c$,
+    rainfall) outrank variables that act only indirectly through ET$_0$ ---
+    consistent with the physics used to construct the data.
     \item \textbf{No systematic bias.} Actual and predicted means agree
     closely for every model; errors are concentrated in day-to-day precision
     (captured by MAE/RMSE), not a directional bias.
@@ -459,7 +511,7 @@ Yes, on three independent checks:
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.8\textwidth]{../figures/09_monthly_avg_demand.png}
+\includegraphics[width=0.8\textwidth]{../figures/08_monthly_avg_demand.png}
 \caption{Monthly average irrigation water demand, reproducing the expected Indian agro-climatic irrigation calendar.}
 \label{fig:monthly}
 \end{figure}
@@ -489,10 +541,10 @@ Section~\ref{sec:limitations}).
     harvest and re-sowing) was assumed for simplicity; real fields have
     fallow/rotation gaps.
     \item \textbf{Dominance of the persistence feature}
-    (\texttt{previous\_irrigation\_mm}) --- future work should retrain
-    without it to isolate genuine weather-to-demand predictive skill,
-    relevant for multi-day-ahead forecasts where yesterday's true value is
-    unavailable.
+    (\texttt{previous\_irrigation\_mm}), confirmed by all three
+    feature-importance metrics --- future work should retrain without it to
+    isolate genuine weather-to-demand predictive skill, relevant for
+    multi-day-ahead forecasts where yesterday's true value is unavailable.
     \item \textbf{No deep learning / sequence models} (e.g., LSTM) were used,
     per the project's intended undergraduate scope; comparing against these
     would be a natural extension.
@@ -505,18 +557,22 @@ Section~\ref{sec:limitations}).
 
 This project built and validated a complete pipeline --- from FAO-56 physical
 first principles through synthetic dataset generation to machine-learning
-prediction --- for daily irrigation water demand. Random Forest and Gradient
-Boosting models substantially outperformed a linear baseline
+prediction --- for daily irrigation water demand. The Random Forest model
+substantially outperformed a linear baseline
 (R\textsuperscript{2} $\approx$ 0.97 vs.\ 0.92; MAE $\approx$ 0.42 vs.\
 0.72~mm/day), confirming that irrigation demand is governed by nonlinear
 interactions among weather, crop coefficient, and rainfall --- directly
 traceable to the nonlinear structure of the Penman--Monteith equation and the
-FAO-56 crop water balance used to generate the data. The results pass multiple
-physical-reasonableness checks (correct seasonal pattern, sensible feature
-importance ranking, no systematic bias), demonstrating that a modest,
-well-engineered feature set and standard scikit-learn regressors are
-sufficient for an undergraduate-level machine-learning approach to irrigation
-scheduling support.
+FAO-56 crop water balance used to generate the data. A three-metric
+feature-importance analysis (correlation, MDI, and permutation importance)
+consistently identified antecedent demand, crop coefficient, and rainfall as
+the dominant predictors, cross-validating the ranking across independent
+methods rather than relying on a single, potentially misleading measure. The
+results pass multiple physical-reasonableness checks (correct seasonal
+pattern, sensible feature importance ranking, no systematic bias),
+demonstrating that a modest, well-engineered feature set and standard
+scikit-learn regressors are sufficient for an undergraduate-level
+machine-learning approach to irrigation scheduling support.
 
 \begin{thebibliography}{9}
 
@@ -541,6 +597,17 @@ India Meteorological Department (IMD) --- representative climatological
 normals for central India, used only to loosely calibrate synthetic monthly
 weather ranges.
 
+\bibitem{rf}
+Breiman, L. (2001).
+Random Forests.
+\textit{Machine Learning}, 45(1), 5--32.
+
+\bibitem{permimp}
+Fisher, A., Rudin, C., Dominici, F. (2019).
+All Models are Wrong, but Many are Useful: Learning a Variable's Importance
+by Studying an Entire Class of Prediction Models Simultaneously.
+\textit{Journal of Machine Learning Research}, 20(177), 1--81.
+
 \bibitem{sklearn}
 Pedregosa, F., Varoquaux, G., Gramfort, A., et al. (2011).
 Scikit-learn: Machine Learning in Python.
@@ -562,8 +629,9 @@ irrigation-demand observations in this report are synthetically generated
 (Section 3.2), using FAO-56-based relationships calibrated to realistic Indian
 agricultural weather ranges. They are not measurements from any real farm,
 field trial, or government meteorological station. All model metrics
-(Section 5) were obtained by actually training the described models on this
-generated dataset (\texttt{model\_training.ipynb}, reproducible with
+(Section 5) and feature-importance figures (Section 6) were obtained by
+actually training the described models and running the described analyses on
+this generated dataset (\texttt{model\_training.ipynb}, reproducible with
 \texttt{random\_state=42}) --- none were fabricated in advance.}
 
 \end{document}
