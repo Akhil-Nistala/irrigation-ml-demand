@@ -11,6 +11,7 @@ A Civil Engineering (Water Resources Engineering) term project that predicts dai
 ```
 irrigation-ml-demand/
 ├── README.md                          <- you are here
+├── EXPLAINER.md                       <- from-scratch explainer: FAO-56 theory, every formula, every model/metric
 ├── irrigation_ml_project.ipynb        <- full pipeline: dataset generation + EDA + training, executed
 ├── model_training.ipynb               <- modelling stage only: load dataset, train, evaluate, executed
 ├── src/
@@ -27,6 +28,8 @@ irrigation-ml-demand/
     ├── term_project_report.md         <- full written term-project report (Sections 1-10)
     └── model_comparison.csv           <- raw results table (MAE, RMSE, R², actual/predicted mean)
 ```
+
+**New to any of this?** Read [`EXPLAINER.md`](EXPLAINER.md) first — it explains FAO-56, every formula used, every ML model (what it is and why it's used here), and every metric, from scratch, with no assumed background.
 
 ## Quick start
 
