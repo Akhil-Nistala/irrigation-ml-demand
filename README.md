@@ -24,12 +24,41 @@ irrigation-ml-demand/
 │   ├── best_model_random_forest.joblib  <- best model by R² (auto-selected)
 │   └── metrics.json                   <- MAE / RMSE / R² for every model
 ├── figures/                           <- 8 PNG plots + 1 EDA grid (see below)
-└── report/
-    ├── term_project_report.md         <- full written term-project report (Sections 1-10)
-    ├── term_project_report.tex        <- LaTeX source of the same report
-    ├── model_comparison.csv           <- raw results table (MAE, RMSE, R², actual/predicted mean)
-    └── feature_importance_summary.csv <- correlation, RF MDI importance, and permutation importance per feature
+├── report/
+│   ├── term_project_report.md         <- full written term-project report (Sections 1-10)
+│   ├── term_project_report.tex        <- LaTeX source of the same report
+│   ├── model_comparison.csv           <- raw results table (MAE, RMSE, R², actual/predicted mean)
+│   └── feature_importance_summary.csv <- correlation, RF MDI importance, and permutation importance per feature
+├── backend/                           <- Flask API serving the trained Random Forest + the frontend
+│   ├── app.py
+│   └── requirements.txt
+└── frontend/                          <- static web UI (no build step): predict, training results, how-it-predicts
+    ├── index.html
+    ├── style.css
+    └── app.js
 ```
+
+## Web app
+
+A small local web app lets you enter the 8 input features and get a prediction from the
+trained Random Forest, plus a breakdown of which features drove that specific prediction.
+It also shows the model comparison metrics and feature importances from training.
+
+```bash
+pip install -r backend/requirements.txt
+python backend/app.py
+```
+
+Then open **http://localhost:5000**. The Flask app serves the API (`/api/meta`, `/api/predict`)
+and the static `frontend/` folder — no separate server or build step needed for the frontend.
+
+- **Predict tab** — sliders/inputs for the 8 features (rainfall, temperature, humidity, wind
+  speed, solar radiation, previous day's irrigation, crop coefficient, growth stage) → predicted
+  `irrigation_demand_mm`, plus a per-feature contribution chart for that specific prediction.
+- **Training tab** — MAE/RMSE/R² for all three trained models, the permutation feature-importance
+  chart, and the saved training figures.
+- **How it predicts tab** — explains the Random Forest and the tree-path decomposition used to
+  compute each prediction's feature contributions.
 
 **New to any of this?** Read [`EXPLAINER.md`](EXPLAINER.md) first — it explains FAO-56, every formula used, every ML model (what it is and why it's used here), and every metric, from scratch, with no assumed background.
 

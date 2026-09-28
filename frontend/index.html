@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Irrigation Water Demand Predictor</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="page">
+
+  <header class="page-header">
+    <h1>Irrigation Water Demand Predictor</h1>
+    <p class="subtitle">FAO-56-based synthetic maize dataset &middot; Random Forest regression</p>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-target="predict" role="tab" aria-selected="true">Predict</button>
+    <button class="tab" data-target="training" role="tab" aria-selected="false">Training</button>
+    <button class="tab" data-target="howto" role="tab" aria-selected="false">How it predicts</button>
+  </nav>
+
+  <!-- ============================= PREDICT ============================= -->
+  <section id="predict" class="panel active">
+    <div class="grid-2">
+      <form id="predict-form" class="card">
+        <h2>Input parameters</h2>
+        <div id="field-list" class="field-list">
+          <!-- populated by app.js -->
+        </div>
+        <button type="submit" class="btn-primary">Predict irrigation demand</button>
+        <p id="predict-error" class="error-text" hidden></p>
+      </form>
+
+      <div class="card result-card">
+        <h2>Prediction</h2>
+        <div id="result-empty" class="empty-state">
+          <p>Fill in the parameters and click <strong>Predict</strong> to see the estimated
+          gross irrigation requirement for that day.</p>
+        </div>
+        <div id="result-content" hidden>
+          <div class="hero-stat">
+            <span id="hero-value">0.0</span>
+            <span class="hero-unit">mm / day</span>
+          </div>
+          <p class="hero-caption" id="hero-model"></p>
+
+          <h3 class="section-label">Why this number &mdash; feature contributions</h3>
+          <p class="hint-text">
+            Starting from the model's baseline (average irrigation demand across all training
+            samples), each input pushes the prediction up or down. Bars to the right increase
+            irrigation demand; bars to the left decrease it.
+          </p>
+          <div id="contrib-chart" class="contrib-chart"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= TRAINING ============================= -->
+  <section id="training" class="panel">
+    <div class="card">
+      <h2>Dataset &amp; split</h2>
+      <p id="dataset-summary" class="hint-text"></p>
+    </div>
+
+    <div class="card">
+      <h2>Model comparison</h2>
+      <p class="hint-text">Three regression models were trained on an 80/20 chronological
+      split (train on earlier days, test on later days) and evaluated on the held-out test set.</p>
+      <div id="metric-legend" class="legend"></div>
+      <div id="metrics-charts" class="metrics-charts"></div>
+      <table id="metrics-table" class="data-table"></table>
+    </div>
+
+    <div class="card">
+      <h2>Feature importance</h2>
+      <p class="hint-text">Permutation importance on the held-out test set: how much the
+      Random Forest's R&sup2; drops when a single feature's values are randomly shuffled.
+      A bigger drop means the model relies on that feature more for out-of-sample prediction.</p>
+      <div id="importance-chart" class="bar-chart"></div>
+    </div>
+
+    <div class="card">
+      <h2>Training figures</h2>
+      <p class="hint-text">Generated during model training (see <code>model_training.ipynb</code>).</p>
+      <div class="figure-grid">
+        <figure><img src="/figures/06_model_comparison.png" alt="Model comparison chart" loading="lazy"><figcaption>Model comparison</figcaption></figure>
+        <figure><img src="/figures/05_actual_vs_predicted.png" alt="Actual vs predicted scatter plot" loading="lazy"><figcaption>Actual vs. predicted (test set)</figcaption></figure>
+        <figure><img src="/figures/07_feature_importance_comparison.png" alt="Feature importance comparison chart" loading="lazy"><figcaption>Feature importance (MDI vs. permutation)</figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= HOW IT PREDICTS ============================= -->
+  <section id="howto" class="panel">
+    <div class="card">
+      <h2>How the model predicts</h2>
+      <ol class="howto-list">
+        <li><strong>Random Forest.</strong> The deployed model averages 300 decision trees
+        (<code>max_depth=10</code>), each trained on a bootstrap sample of the training data.
+        Every tree repeatedly splits the 8 input features to isolate groups of days with
+        similar irrigation demand; the forest's prediction is the mean of all 300 trees'
+        leaf values.</li>
+        <li><strong>Per-tree path decomposition.</strong> For a single prediction, each tree
+        starts at its root &mdash; whose value is the average demand across <em>all</em>
+        training days &mdash; and walks down through a sequence of yes/no splits (e.g.
+        &ldquo;previous_irrigation_mm &le; 4.2?&rdquo;) until it reaches a leaf. At every split,
+        the node's average value shifts up or down; that shift is credited to whichever
+        feature caused the split.</li>
+        <li><strong>Averaging across the forest.</strong> Summing those shifts along the path
+        gives <code>leaf value = root value + &sum; feature contributions</code>, exactly,
+        for one tree. Averaging the root values and the per-feature shifts over all 300 trees
+        gives the breakdown shown on the Predict tab: a baseline plus a contribution per
+        input feature that adds up to the final prediction.</li>
+        <li><strong>Why this matters.</strong> Global feature importance (Training tab) says
+        which features matter <em>on average</em> across the dataset. The per-prediction
+        breakdown says which features mattered <em>for this specific day</em> &mdash; e.g.
+        heavy recent rainfall can dominate the decision even for a crop stage that is normally
+        water-hungry.</li>
+      </ol>
+    </div>
+  </section>
+
+</div>
+<script src="app.js"></script>
+</body>
+</html>
