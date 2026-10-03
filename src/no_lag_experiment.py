@@ -1,7 +1,6 @@
-"""Experiment 2: drop yesterday's irrigation demand (previous_irrigation_mm) and retrain.
+"""Classical ML vs deep learning on the 7 weather + crop inputs only (yesterday's irrigation demand is never used).
 
-Same data, same chronological 80/20 split and same classical models as model_training.ipynb, but on the
-7 weather + crop features only. Adds deep-learning models for comparison:
+Same chronological 80/20 split and same classical models as model_training.ipynb. Deep-learning models:
   - MLP          : feed-forward network on today's 7 features
   - 1D-CNN, LSTM : sequence models on the last 7 days of the same 7 features (past weather, never past demand)
   - RF + 7-day window : the same 7-day history flattened for a Random Forest, so the sequence models are
@@ -10,8 +9,8 @@ Same data, same chronological 80/20 split and same classical models as model_tra
 Deep models are trained with 3 seeds (mean +/- std reported), early stopping on the last 10% of the
 training period (still chronological), inputs standardised on the training rows only.
 
-    python src/no_lag_experiment.py                                                   # Experiment 2 (synthetic weather)
-    python src/no_lag_experiment.py --data data/irrigation_dataset_nasa_power.csv --tag nasa   # Experiment 3 (NASA POWER)
+    python src/no_lag_experiment.py                                                   # synthetic weather
+    python src/no_lag_experiment.py --data data/irrigation_dataset_nasa_power.csv --tag nasa   # real NASA POWER weather
 
 Also records train / validation / test error of every deep model (overfitting check).
 """
@@ -51,9 +50,11 @@ ap.add_argument("--tag", default="no_lag")
 args = ap.parse_args()
 TAG = args.tag
 DATA_LABEL = {"no_lag": "synthetic weather", "nasa": "NASA POWER weather"}.get(TAG, TAG)
-FIGS = {"no_lag": ["09_with_vs_without_lag", "10_ml_vs_dl_no_lag", "11_actual_vs_predicted_no_lag", "12_feature_importance_no_lag"],
-        "nasa": ["14_nasa_with_vs_without_lag", "15_nasa_ml_vs_dl", "16_nasa_actual_vs_predicted", "17_nasa_feature_importance"]
-        }.get(TAG) or [f"{TAG}_{i}" for i in ("with_vs_without_lag", "ml_vs_dl", "actual_vs_predicted", "feature_importance")]
+FIGS = {"no_lag": ["09_classical_models", "10_ml_vs_dl_no_lag", "11_actual_vs_predicted_no_lag", "12_feature_importance_no_lag",
+                   "09b_lr_vs_rf_actual_vs_predicted"],
+        "nasa": ["14_nasa_classical_models", "15_nasa_ml_vs_dl", "16_nasa_actual_vs_predicted", "17_nasa_feature_importance",
+                 "14b_nasa_lr_vs_rf_actual_vs_predicted"]
+        }.get(TAG) or [f"{TAG}_{i}" for i in ("classical_models", "ml_vs_dl", "actual_vs_predicted", "feature_importance", "lr_vs_rf")]
 FIGS = [ROOT / "figures" / f"{f}.png" for f in FIGS]
 
 df = pd.read_csv(ROOT / args.data, parse_dates=["date"])
@@ -183,23 +184,13 @@ for name, cls in [("MLP", MLP), ("1D-CNN (7-day)", CNN1D), ("LSTM (7-day)", LSTM
     print(name, {k: round(v, 3) for k, v in results[name].items() if isinstance(v, float)}, flush=True)
 pd.DataFrame(overfit_rows).to_csv(ROOT / f"report/{TAG}_overfitting_check.csv", index=False)
 
-# ---------------- same classical models WITH yesterday's demand (8 features), for the with/without comparison ----------------
-F8 = FEATURES[:5] + ["previous_irrigation_mm"] + FEATURES[5:]
-with_lag = {}
-for name, m in {"Linear Regression": LinearRegression(),
-                "Decision Tree": DecisionTreeRegressor(max_depth=8, random_state=RANDOM_STATE),
-                "Random Forest": RandomForestRegressor(n_estimators=300, max_depth=10, random_state=RANDOM_STATE, n_jobs=2)}.items():
-    m.fit(train_df[F8], y_train)
-    with_lag[name] = scores(y_test, m.predict(test_df[F8]))
-
 res = pd.DataFrame(results).T
 res.index.name = "Model"
 for k in ("MAE", "RMSE", "R2"):
     res[k] = res[k].astype(float)
 res.to_csv(ROOT / f"report/{TAG}_model_comparison.csv")
 (ROOT / f"models/metrics_{TAG}.json").write_text(json.dumps(
-    dict(data=args.data, features=FEATURES, dropped="previous_irrigation_mm", results=results,
-         with_previous_irrigation={k: {m: v[m] for m in ("MAE", "RMSE", "R2")} for k, v in with_lag.items()}),
+    dict(data=args.data, features=FEATURES, results=results),
     indent=2, default=float))
 
 # ---------------- permutation importance for the 7-feature Random Forest ----------------
@@ -216,27 +207,39 @@ imp.to_csv(ROOT / f"report/{TAG}_feature_importance.csv")
 TEAL, AMBER, LEAF, GREY = "#0B4F6C", "#E8A33D", "#3B8C6E", "#9AA5A8"
 plt.rcParams.update({"font.size": 11, "axes.spines.top": False, "axes.spines.right": False})
 
-# 09: with vs without yesterday's demand, classical models
-fig, axes = plt.subplots(1, 2, figsize=(12, 4.6))
+# classical models only: MAE / RMSE / R2 bars
+fig, axes = plt.subplots(1, 3, figsize=(13, 4.3))
 names = list(classical)
-x = np.arange(len(names))
-for ax, metric, title in zip(axes, ["MAE", "R2"], ["MAE (mm/day) - lower is better", "R$^2$ - higher is better"]):
-    a = [with_lag[n][metric] for n in names]
-    b = [results[n][metric] for n in names]
-    ax.bar(x - 0.2, a, 0.38, color=GREY, label="8 features (with yesterday's demand)")
-    ax.bar(x + 0.2, b, 0.38, color=TEAL, label="7 features (without)")
-    for xi, v in list(zip(x - 0.2, a)) + list(zip(x + 0.2, b)):
-        ax.text(xi, v, f"{v:.3f}", ha="center", va="bottom", fontsize=9)
-    ax.set_xticks(x, names)
+for ax, metric, title in zip(axes, ["MAE", "RMSE", "R2"], ["MAE (mm/day), lower is better", "RMSE (mm/day), lower is better",
+                                                           "R$^2$, higher is better"]):
+    v = [results[n][metric] for n in names]
+    ax.bar(names, v, color=[GREY, LEAF, TEAL], width=0.6)
+    for i, val in enumerate(v):
+        ax.text(i, val, f"{val:.3f}", ha="center", va="bottom", fontsize=9)
     ax.set_title(title)
+    ax.tick_params(axis="x", labelsize=9)
     if metric == "R2":
-        ax.set_ylim(min(0.8, min(a + b) - 0.03), 1.0)
-axes[0].legend(frameon=False, fontsize=9, loc="upper right")
+        ax.set_ylim(min(0.8, min(v) - 0.03), 1.0)
 plt.tight_layout()
 plt.savefig(FIGS[0], dpi=150)
 plt.close()
 
-# 10: all models without the lag feature
+# Linear Regression vs Random Forest, actual vs predicted
+fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+for ax, n, c in zip(axes, ["Linear Regression", "Random Forest"], [GREY, TEAL]):
+    ax.scatter(y_test, preds[n], s=14, alpha=0.5, color=c)
+    lo = min(0, preds[n].min()) - 0.5
+    lim = [lo, max(y_test.max(), preds[n].max()) + 0.5]
+    ax.plot(lim, lim, "--", color="#C0392B", lw=1.4)
+    ax.axhline(0, color="black", lw=0.6)
+    ax.set_xlabel("Actual demand (mm/day)")
+    ax.set_ylabel("Predicted demand (mm/day)")
+    ax.set_title(f"{n}: MAE {results[n]['MAE']:.2f}, R$^2$ {results[n]['R2']:.3f}, {results[n]['negative_predictions']} negative")
+plt.tight_layout()
+plt.savefig(FIGS[4], dpi=150)
+plt.close()
+
+# all models
 order = res.sort_values("MAE", ascending=False).index
 fig, ax = plt.subplots(figsize=(10, 4.8))
 colors = [AMBER if res.loc[n, "family"] == "Deep learning" else TEAL for n in order]
@@ -251,12 +254,12 @@ ax.set_xlabel("Test MAE (mm/day), lower is better")
 ax.set_xlim(0, res["MAE"].max() * 1.5)
 ax.legend(handles=[plt.Rectangle((0, 0), 1, 1, color=TEAL), plt.Rectangle((0, 0), 1, 1, color=AMBER)],
           labels=["Classical ML", "Deep learning (mean of 3 seeds, $\\pm$1 sd)"], frameon=False, loc="upper right")
-ax.set_title(f"All models, 7 features (no yesterday's demand), {DATA_LABEL}")
+ax.set_title(f"All models, 7 weather + crop inputs, {DATA_LABEL}")
 plt.tight_layout()
 plt.savefig(FIGS[1], dpi=150)
 plt.close()
 
-# 11: actual vs predicted, best classical vs best deep model
+# actual vs predicted, best classical vs best deep model
 best_dl = res[res.family == "Deep learning"]["MAE"].idxmin()
 best_cl = res[res.family == "Classical ML"]["MAE"].idxmin()
 fig, axes = plt.subplots(1, 2, figsize=(12, 5))
@@ -271,7 +274,7 @@ plt.tight_layout()
 plt.savefig(FIGS[2], dpi=150)
 plt.close()
 
-# 12: feature importance without the lag feature
+# feature importance
 o = imp.sort_values("rf_permutation_importance_mean").index
 fig, axes = plt.subplots(1, 2, figsize=(12, 4.6))
 axes[0].barh([LABELS[f] for f in o], imp.loc[o, "rf_mdi_importance"], color=LEAF)

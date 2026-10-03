@@ -9,7 +9,6 @@
     "crop_coefficient",
     "growth_stage"
   ],
-  "dropped": "previous_irrigation_mm",
   "results": {
     "Linear Regression": {
       "family": "Classical ML",
@@ -27,7 +26,7 @@
     },
     "Random Forest": {
       "family": "Classical ML",
-      "MAE": 0.42338299262731716,
+      "MAE": 0.4233829926273172,
       "RMSE": 0.6421037010820695,
       "R2": 0.9709140008647018,
       "negative_predictions": 0
@@ -86,23 +85,6 @@
         139
       ],
       "parameters": 12545
-    }
-  },
-  "with_previous_irrigation": {
-    "Linear Regression": {
-      "MAE": 0.7161109325814202,
-      "RMSE": 1.0304822775348295,
-      "R2": 0.925087430321694
-    },
-    "Decision Tree": {
-      "MAE": 0.6890602979331818,
-      "RMSE": 1.112388972369216,
-      "R2": 0.9127054782135529
-    },
-    "Random Forest": {
-      "MAE": 0.4906987143863978,
-      "RMSE": 0.7400242654604886,
-      "R2": 0.961366365967822
     }
   }
 }

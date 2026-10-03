@@ -136,8 +136,8 @@
       ``many small showers, occasional big storm'' pattern.
     \item \textbf{2,000 days} (about 5.5 years) of daily records, for a maize
       crop, at a representative central-Indian location.
-    \item Experiment 3 later replaces this weather with \textbf{real NASA
-      POWER data} for the same place and dates.
+    \item Later, this weather is replaced with \textbf{real NASA POWER data}
+      for the same place and dates.
   \end{itemize}
 \end{frame}
 
@@ -153,8 +153,6 @@
         \item Solar radiation
         \item Crop coefficient
         \item Growth stage
-        \item \textcolor{slategray}{Yesterday's irrigation amount}\\
-          {\footnotesize\textcolor{slategray}{(Experiment 1 only --- removed in Experiment 2)}}
       \end{itemize}
     \end{column}
     \begin{column}{0.5\textwidth}
@@ -202,11 +200,11 @@
       averages their answers, cancelling out individual mistakes.
   \end{itemize}
   \vspace{0.5em}
-  Experiment 2 (later) removes yesterday's irrigation amount and also compares
-  these against three \textbf{deep-learning} models.
+  These are then compared against three \textbf{deep-learning} models, first
+  on synthetic weather and then on real NASA weather.
 \end{frame}
 
-\section{Results (Experiment 1: all 8 inputs)}
+\section{Results}
 
 \begin{frame}{How good were the predictions?}
   \begin{table}
@@ -217,9 +215,9 @@
       \textbf{Model} & \textbf{MAE} & \textbf{RMSE} & \textbf{R\textsuperscript{2}} \\
        & \footnotesize (mm/day) & \footnotesize (mm/day) & \footnotesize (variance explained) \\
       \midrule
-      Linear Regression & 0.72 & 1.01 & 92\% \\
-      Decision Tree & 0.66 & 1.00 & 93\% \\
-      \textbf{Random Forest} & \textbf{0.42} & \textbf{0.64} & \textbf{97\%} \\
+      Linear Regression & 0.83 & 1.11 & 91\% \\
+      Decision Tree & 0.64 & 1.03 & 92\% \\
+      \textbf{Random Forest} & \textbf{0.40} & \textbf{0.70} & \textbf{96\%} \\
       \bottomrule
     \end{tabular}
   \end{table}
@@ -228,7 +226,7 @@
   \textbf{RMSE} = similar, but penalises the occasional big miss more heavily.
   \normalsize
   \begin{itemize}
-    \item Random Forest was clearly the best --- it explains about 97\% of the
+    \item Random Forest was clearly the best --- it explains about 96\% of the
       day-to-day variation in irrigation demand.
     \item Linear Regression's straight-line assumption cannot capture the
       real, more complex weather-to-demand relationships.
@@ -237,16 +235,16 @@
 
 \begin{frame}{A visual check: predicted vs.\ actual}
   \centering
-  \fitfig[0.62]{figures/05_actual_vs_predicted.png}
+  \fitfig[0.62]{figures/09b_lr_vs_rf_actual_vs_predicted.png}
 
   \small Points closer to the dashed line = better predictions. Linear
-  Regression (left) sometimes predicts \textbf{negative} water demand ---
-  physically impossible. Random Forest (right) never does.
+  Regression (left) predicts \textbf{negative} water demand on 13 of the 400
+  test days --- physically impossible. Random Forest (right) never does.
 \end{frame}
 
 \begin{frame}{Model comparison at a glance}
   \centering
-  \fitfig[0.72]{figures/06_model_comparison.png}
+  \fitfig[0.6]{figures/09_classical_models.png}
 \end{frame}
 
 \section{What Matters Most}
@@ -262,31 +260,23 @@
       \item \textbf{Permutation importance} --- scramble one feature at a
         time on unseen data and see how much accuracy drops.
     \end{enumerate}
-    \item All three \alert{agree on the same ranking} --- a strong
-      cross-check that the story isn't an artefact of one particular method.
+    \item The two Random Forest measures \alert{agree on the top drivers}.
+      Simple correlation is misleading on its own: growth stage correlates
+      with demand but adds nothing once the crop coefficient is known.
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Feature importance --- three views, one story}
+\begin{frame}{Feature importance --- what drives the prediction}
   \centering
-  \fitfig[0.62]{figures/07_feature_importance_comparison.png}
+  \fitfig[0.56]{figures/12_feature_importance_no_lag.png}
 
-  \small Left: Random Forest importance. Right: permutation importance on
-  unseen test data, with error bars.
-\end{frame}
-
-\begin{frame}{An important honest caveat}
+  \small
   \begin{itemize}
-    \item \textbf{Yesterday's irrigation amount} turned out to be, by far, the
-      single most useful piece of information --- on every one of the three
-      measures.
-    \item This makes sense: weather tends to persist for several days in a
-      row, so yesterday's demand is already a good hint about today's.
-    \item But it also means part of the model's high accuracy comes from this
-      simple ``carry-over'' effect, rather than the model fully learning the
-      weather-to-demand relationship from scratch.
-    \item Worth stating openly, rather than waiting to be asked --- so
-      \alert{Experiment 2 removes it} and retrains everything.
+    \item \textbf{Crop coefficient} and \textbf{solar radiation} lead,
+      followed by rainfall and temperature: the same drivers as the FAO-56
+      method itself.
+    \item Growth stage adds nothing extra, because the crop coefficient
+      already encodes it.
   \end{itemize}
 \end{frame}
 
@@ -297,76 +287,6 @@
   \small Peaks in the hot, dry months before the monsoon (March--May); drops
   sharply during the monsoon, when rain does the work instead --- exactly
   what farmers and engineers already expect.
-\end{frame}
-
-\section{Experiment 2: Without Yesterday's Demand}
-
-\begin{frame}{Experiment 2: what changed}
-  \begin{itemize}
-    \item \textbf{Removed} yesterday's irrigation amount from the inputs.
-    \item Models now see only the \textbf{7 weather and crop inputs}:
-      rainfall, temperature, humidity, wind speed, solar radiation, crop
-      coefficient, growth stage.
-    \item Everything else kept \textbf{identical}: same 2,000 days, same
-      chronological 80/20 split (1,600 train / 400 test days), same model
-      settings.
-  \end{itemize}
-  \begin{alertblock}{The question}
-    Was the high accuracy really coming from the ``carry-over'' of yesterday's
-    demand, or can the models learn the weather-to-demand relationship on
-    their own?
-  \end{alertblock}
-\end{frame}
-
-\begin{frame}{Results with vs.\ without yesterday's demand}
-  \begin{table}
-    \centering
-    \small
-    \begin{tabular}{lcccccc}
-      \toprule
-       & \multicolumn{3}{c}{\textbf{With} (8 inputs)} & \multicolumn{3}{c}{\textbf{Without} (7 inputs)} \\
-      \cmidrule(lr){2-4}\cmidrule(lr){5-7}
-      \textbf{Model} & MAE & RMSE & R\textsuperscript{2} & MAE & RMSE & R\textsuperscript{2} \\
-      \midrule
-      Linear Regression & 0.72 & 1.01 & 0.924 & 0.83 & 1.11 & 0.908 \\
-      Decision Tree     & 0.66 & 1.00 & 0.926 & 0.64 & 1.03 & 0.921 \\
-      \textbf{Random Forest} & 0.42 & 0.64 & 0.970 & \textbf{0.40} & 0.70 & \textbf{0.963} \\
-      \bottomrule
-    \end{tabular}
-  \end{table}
-  \footnotesize MAE and RMSE in mm/day, on the same 400 held-out test days.
-  \small
-  \begin{itemize}
-    \item Removing it costs \alert{very little}: Random Forest still explains
-      \textbf{96\%} of the variation (down from 97\%).
-    \item Its typical error (MAE) even drops slightly, 0.42 $\rightarrow$
-      0.40 mm/day; RMSE rises (0.64 $\rightarrow$ 0.70) because of a few
-      larger misses on rainy days.
-    \item Linear Regression loses the most (MAE +15\%): it leaned on the
-      carry-over because it cannot model the curved weather effects.
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{With vs.\ without, side by side}
-  \centering
-  \fitfig[0.66]{figures/09_with_vs_without_lag.png}
-
-  \small Grey = with yesterday's demand, teal = without. The tree-based models
-  barely change.
-\end{frame}
-
-\begin{frame}{What the model relies on now}
-  \centering
-  \fitfig[0.56]{figures/12_feature_importance_no_lag.png}
-
-  \small
-  \begin{itemize}
-    \item \textbf{Crop coefficient} and \textbf{solar radiation} now lead,
-      followed by rainfall and temperature: the same drivers as the FAO-56
-      method itself.
-    \item Growth stage adds nothing extra, because the crop coefficient
-      already encodes it.
-  \end{itemize}
 \end{frame}
 
 \section{Comparison with Deep Learning}
@@ -491,9 +411,9 @@
   \end{itemize}
 \end{frame}
 
-\section{Experiment 3: Real NASA Weather}
+\section{Real Weather: NASA POWER}
 
-\begin{frame}{Experiment 3: replacing synthetic weather with real data}
+\begin{frame}{Replacing synthetic weather with real data}
   \small
   \begin{itemize}
     \item \textbf{NASA POWER}: daily satellite-and-reanalysis weather from NASA's
@@ -535,35 +455,17 @@
   That cap was therefore removed.
 \end{frame}
 
-\begin{frame}{Yesterday's demand on real weather}
-  \begin{table}
-    \centering
-    \small
-    \begin{tabular}{lcccccc}
-      \toprule
-       & \multicolumn{3}{c}{\textbf{With} (8 inputs)} & \multicolumn{3}{c}{\textbf{Without} (7 inputs)} \\
-      \cmidrule(lr){2-4}\cmidrule(lr){5-7}
-      \textbf{Model} & MAE & RMSE & R\textsuperscript{2} & MAE & RMSE & R\textsuperscript{2} \\
-      \midrule
-      Linear Regression & 0.72 & 1.03 & 0.925 & 0.91 & 1.30 & 0.880 \\
-      Decision Tree     & 0.69 & 1.11 & 0.913 & 0.69 & 0.97 & 0.933 \\
-      \textbf{Random Forest} & 0.49 & 0.74 & 0.961 & \textbf{0.42} & \textbf{0.64} & \textbf{0.971} \\
-      \bottomrule
-    \end{tabular}
-  \end{table}
-  \footnotesize MAE and RMSE in mm/day, on the last 400 days (20 May 2023 -- 22 Jun 2024).
+\begin{frame}{Classical models on real weather}
+  \centering
+  \fitfig[0.56]{figures/14_nasa_classical_models.png}
+
   \small
   \begin{itemize}
-    \item On real weather, removing yesterday's demand made Random Forest
-      \alert{better}, not worse: error 0.49 $\rightarrow$ 0.42 mm/day,
-      R\textsuperscript{2} 0.961 $\rightarrow$ 0.971.
-    \item Only Linear Regression needs the carry-over, as in Experiment 2.
+    \item Same ranking as on synthetic weather: Random Forest best
+      (0.42 mm/day, R\textsuperscript{2} 0.971), Linear Regression worst
+      (0.91 mm/day, 13 negative predictions).
+    \item Test period: the last 400 days, 20 May 2023 -- 22 Jun 2024.
   \end{itemize}
-\end{frame}
-
-\begin{frame}{With vs.\ without, real weather}
-  \centering
-  \fitfig[0.66]{figures/14_nasa_with_vs_without_lag.png}
 \end{frame}
 
 \begin{frame}{Classical ML vs.\ deep learning on real weather}
@@ -587,7 +489,7 @@
       \bottomrule
     \end{tabular}
   \end{table}
-  \footnotesize 7 inputs, no yesterday's demand; deep models are the mean of 3 seeds.
+  \footnotesize Same 7 weather and crop inputs; deep models are the mean of 3 seeds.
   \small
   \begin{itemize}
     \item Same ranking as on synthetic data. The LSTM cuts Random Forest's error by
@@ -657,12 +559,11 @@
     \small
     \begin{tabular}{lcc}
       \toprule
-      \textbf{7 inputs, no yesterday's demand} & \textbf{Synthetic} & \textbf{NASA POWER} \\
+      \textbf{7 weather and crop inputs} & \textbf{Synthetic} & \textbf{NASA POWER} \\
       \midrule
       Random Forest, MAE / R\textsuperscript{2} & 0.40 / 0.963 & 0.42 / 0.971 \\
       MLP, MAE / R\textsuperscript{2} & 0.28 / 0.990 & 0.27 / 0.991 \\
       LSTM, MAE / R\textsuperscript{2} & \textbf{0.26 / 0.990} & \textbf{0.23 / 0.994} \\
-      Effect of removing yesterday's demand on RF & small loss & \textbf{gain} \\
       \bottomrule
     \end{tabular}
   \end{table}
@@ -676,17 +577,17 @@
 
 \begin{frame}{Limitations}
   \begin{itemize}
-    \item Experiments 1--2 use synthetic weather. Experiment 3 uses real NASA
-      POWER weather, but the irrigation demand is still \emph{calculated} with
+    \item The main results use synthetic weather. The real-weather test uses
+      NASA POWER, but the irrigation demand is still \emph{calculated} with
       FAO-56, not measured in a real, instrumented field.
     \item NASA POWER is gridded satellite/reanalysis data (cells tens of km
       wide), not a weather station inside the field.
     \item Only one crop (maize) and one climate region were modelled.
     \item A simplified rainfall formula was applied at a daily step, though it
       was originally meant for monthly totals.
-    \item Experiment 1 leaned heavily on ``yesterday's demand''. Experiment 2
-      shows the models work without it, but true multi-day-ahead forecasting
-      would still need weather \emph{forecasts} as inputs.
+    \item The models predict today's demand from today's (and the past
+      week's) weather; multi-day-ahead forecasting would need weather
+      \emph{forecasts} as inputs.
     \item The target follows the FAO-56 formula exactly, which favours smooth
       models such as neural networks; measured irrigation would be noisier.
   \end{itemize}
@@ -695,15 +596,15 @@
 \begin{frame}{Conclusion}
   \begin{itemize}
     \item Machine learning can predict daily irrigation water demand very
-      accurately from simple weather and crop inputs \textbf{alone}: without
-      yesterday's demand, Random Forest still reaches R\textsuperscript{2} = 0.96.
+      accurately from simple weather and crop inputs alone: Random Forest
+      reaches R\textsuperscript{2} = 0.96.
     \item Deep learning goes further: an \textbf{LSTM} reaches
       R\textsuperscript{2} = 0.99 and cuts the typical error by 35\% (0.26
       mm/day), and a simple MLP is nearly as good.
     \item The results \textbf{hold on real NASA POWER weather}: LSTM
       R\textsuperscript{2} = 0.994 (0.23 mm/day), with no meaningful overfitting.
     \item Results consistently make physical sense: right seasonal pattern,
-      right feature priorities (cross-checked three independent ways), no
+      right feature priorities (cross-checked several ways), no
       systematic bias.
     \item This points toward a faster, simpler decision-support tool for
       irrigation scheduling, without sacrificing physical grounding.

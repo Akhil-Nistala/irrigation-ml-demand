@@ -1,4 +1,4 @@
-"""Experiment 3 dataset: REAL daily weather from NASA POWER for Nagpur + the same FAO-56 target.
+"""Real-weather dataset: REAL daily weather from NASA POWER for Nagpur + the same FAO-56 target.
 
 Weather (observed / satellite-derived, NASA POWER Agroclimatology community, daily point API):
     T2M, T2M_MAX, T2M_MIN  -> temperature_C (mean), plus Tmax/Tmin for Penman-Monteith
@@ -112,7 +112,7 @@ for ax, (c, title, f) in zip(axes.flat, panels):
     s, n = monthly(syn, c, f), monthly(df, c, f)
     if f == "sum":
         s, n = s / years, n / years
-    ax.plot(s.index, s.values, "o-", color=GREY, lw=2, label="Synthetic (Exp. 1-2)")
+    ax.plot(s.index, s.values, "o-", color=GREY, lw=2, label="Synthetic")
     ax.plot(n.index, n.values, "o-", color=TEAL, lw=2, label="NASA POWER (real)")
     ax.set_title(title)
     ax.set_xticks(range(1, 13), list("JFMAMJJASOND"))
