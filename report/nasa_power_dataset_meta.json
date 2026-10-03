@@ -1,0 +1,22 @@
+{
+  "source": "NASA POWER daily point API, community AG",
+  "latitude": 21.15,
+  "longitude": 79.09,
+  "start": "2019-01-01",
+  "end": "2024-06-22",
+  "days": 2000,
+  "parameters": [
+    "T2M",
+    "T2M_MAX",
+    "T2M_MIN",
+    "RH2M",
+    "WS2M",
+    "ALLSKY_SFC_SW_DWN",
+    "PRECTOTCORR"
+  ],
+  "missing_values_interpolated": 0,
+  "et0_days_above_synthetic_cap_8mm": 199,
+  "et0_max_mm": 13.792527018640461,
+  "rain_days_over_1mm": 659,
+  "max_daily_rain_mm": 84.42
+}
