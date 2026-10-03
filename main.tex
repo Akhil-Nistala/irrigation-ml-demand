@@ -1,0 +1,533 @@
+\documentclass[11pt,aspectratio=169]{beamer}
+
+% ================= Theme: Metropolis (clean, modern, flat) =================
+\usetheme{metropolis}
+
+% ---------- Custom "water / irrigation" colour palette ----------
+% Deep teal primary, warm amber accent, soft off-white background
+\definecolor{deepteal}{HTML}{0B4F6C}
+\definecolor{amber}{HTML}{E8A33D}
+\definecolor{leaf}{HTML}{3B8C6E}
+\definecolor{offwhite}{HTML}{FAFAF7}
+\definecolor{slategray}{HTML}{4A5A5F}
+
+\setbeamercolor{palette primary}{bg=deepteal, fg=white}
+\setbeamercolor{frametitle}{bg=deepteal, fg=white}
+\setbeamercolor{progress bar}{fg=amber, bg=slategray!20}
+\setbeamercolor{alerted text}{fg=amber}
+\setbeamercolor{normal text}{bg=offwhite}
+\setbeamercolor{background canvas}{bg=offwhite}
+\setbeamercolor{block title}{bg=leaf, fg=white}
+\setbeamercolor{block body}{bg=leaf!10, fg=black}
+\setbeamertemplate{blocks}[rounded]
+
+\setbeamertemplate{navigation symbols}{}
+\metroset{sectionpage=progressbar, subsectionpage=progressbar, numbering=fraction, progressbar=frametitle, block=fill}
+
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+
+% shrink default vertical gaps a touch so bullet+figure slides fit safely
+\setlength{\parskip}{2pt}
+
+\title{Predicting Irrigation Water Demand}
+\subtitle{with Machine Learning}
+\author{Akhil Nistala}
+\institute{Civil Engineering (Water Resources Engineering) Term Project \\ IIT Hyderabad}
+\date{\today}
+
+% Helper: a figure that is guaranteed to fit under a frame title + caption,
+% no matter its native aspect ratio.
+\newcommand{\fitfig}[2][0.62]{%
+  \includegraphics[width=\textwidth,height=#1\textheight,keepaspectratio]{#2}%
+}
+
+\begin{document}
+
+% ---------------- Title ----------------
+{
+\setbeamertemplate{footline}{}
+\begin{frame}
+  \titlepage
+\end{frame}
+}
+
+% ---------------- Outline ----------------
+\begin{frame}{Overview}
+  \tableofcontents
+\end{frame}
+
+\section{The Problem}
+
+\begin{frame}{Why does this matter?}
+  \begin{itemize}
+    \item Every day, a farmer must decide: \alert{how much water to give the crop?}
+    \item Too little $\rightarrow$ crop stress, lower yield.
+    \item Too much $\rightarrow$ wasted water, waterlogging, nutrient loss.
+    \item Engineers already know how to calculate this correctly --- but it needs
+      five different weather readings and a fairly involved calculation, every
+      single day, for every field.
+  \end{itemize}
+  \begin{alertblock}{The question this project asks}
+    Can a machine-learning model \textbf{learn} to predict the same answer directly
+    from simple weather and crop data --- fast, without redoing the full
+    calculation each time?
+  \end{alertblock}
+\end{frame}
+
+\section{The Idea in Plain Terms}
+
+\begin{frame}{Think of the field as a bucket}
+  \begin{columns}[T]
+    \begin{column}{0.55\textwidth}
+      \begin{itemize}
+        \item Water \textbf{comes in} from rain and irrigation.
+        \item Water \textbf{leaves} through evaporation from the soil and
+          transpiration by the plant (together, ``evapotranspiration'').
+        \item If more leaves than comes in, the bucket runs low --- and
+          irrigation must top it up.
+      \end{itemize}
+      \vspace{0.5em}
+      That's the entire physical idea behind this project.
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \centering
+      \small
+      \textcolor{deepteal}{\textbf{Rain + Irrigation}} \\[0.3em]
+      $\big\Downarrow$ \\[0.3em]
+      \textcolor{leaf}{\textbf{Soil--Crop Bucket}} \\[0.3em]
+      $\big\Uparrow$ \\[0.3em]
+      \textcolor{amber!80!black}{\textbf{Evapotranspiration}}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{The standard engineering method: FAO-56}
+  \begin{itemize}
+    \item FAO-56 is the internationally accepted method for estimating how much
+      water a crop needs, published by the UN Food and Agriculture Organization.
+    \item It works in two simple steps:
+  \end{itemize}
+  \begin{center}
+    \small
+    \textbf{Weather} $\;\rightarrow\;$ \textbf{Atmospheric thirst (ET0)} \\[0.2em]
+    $\times$ \\[0.2em]
+    \textbf{Crop coefficient (Kc)} \; -- depends on crop type \& growth stage \\[0.2em]
+    $=$ \\[0.2em]
+    \textbf{Actual crop water need}
+  \end{center}
+  Then subtract whatever rainfall already supplied, and divide by irrigation
+  system efficiency, to get the final \alert{irrigation demand}.
+\end{frame}
+
+\section{The Data}
+
+\begin{frame}{Where did the data come from?}
+  \begin{itemize}
+    \item No real farm dataset with all the needed variables was available.
+    \item So a \textbf{synthetic dataset} was generated --- not random
+      numbers, but the exact FAO-56 physics above, run over realistic Indian
+      weather patterns.
+    \item Weather behaves like real weather: hot spells and wet spells last
+      several days, not one isolated day, and rainfall follows a realistic
+      ``many small showers, occasional big storm'' pattern.
+    \item \textbf{2,000 days} (about 5.5 years) of daily records, for a maize
+      crop, at a representative central-Indian location.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{What goes into the model}
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      \textbf{Inputs (what we know):}
+      \begin{itemize}
+        \item Rainfall
+        \item Temperature
+        \item Humidity
+        \item Wind speed
+        \item Solar radiation
+        \item Crop coefficient
+        \item Growth stage
+        \item \textcolor{slategray}{Yesterday's irrigation amount}\\
+          {\footnotesize\textcolor{slategray}{(Experiment 1 only --- removed in Experiment 2)}}
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \textbf{Output (what we predict):}
+      \begin{itemize}
+        \item Today's irrigation water demand (mm/day)
+      \end{itemize}
+      \vspace{1em}
+      \begin{block}{}
+        \small The model never sees the intermediate physics calculations ---
+        only the raw inputs a farmer would actually have.
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{What the data looks like}
+  \centering
+  \fitfig[0.68]{figures/eda_grid.png}
+  \vspace{0.3em}
+
+  \small Hotter, sunnier days $\rightarrow$ more water needed. Rainy days $\rightarrow$ demand drops to near zero.
+\end{frame}
+
+\section{Building the Models}
+
+\begin{frame}{Splitting the data fairly}
+  \begin{itemize}
+    \item First \textbf{80\% of days} (chronologically) used to train the
+      models.
+    \item Last \textbf{20\% of days} held back to test them.
+    \item This mimics real life: a model only ever has the past to predict
+      the future --- it never gets to ``peek'' at days close to the ones it's
+      tested on.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Three models compared}
+  \begin{itemize}
+    \item \textbf{Linear Regression} --- the simplest approach: assumes a
+      straight-line relationship between inputs and demand.
+    \item \textbf{Decision Tree} --- learns a series of yes/no questions
+      (``Is it hot? Did it rain?'') to arrive at a prediction.
+    \item \textbf{Random Forest} --- builds hundreds of decision trees and
+      averages their answers, cancelling out individual mistakes.
+  \end{itemize}
+  \vspace{0.5em}
+  Experiment 2 (later) removes yesterday's irrigation amount and also compares
+  these against three \textbf{deep-learning} models.
+\end{frame}
+
+\section{Results (Experiment 1: all 8 inputs)}
+
+\begin{frame}{How good were the predictions?}
+  \begin{table}
+    \centering
+    \small
+    \begin{tabular}{lccc}
+      \toprule
+      \textbf{Model} & \textbf{MAE} & \textbf{RMSE} & \textbf{R\textsuperscript{2}} \\
+       & \footnotesize (mm/day) & \footnotesize (mm/day) & \footnotesize (variance explained) \\
+      \midrule
+      Linear Regression & 0.72 & 1.01 & 92\% \\
+      Decision Tree & 0.66 & 1.00 & 93\% \\
+      \textbf{Random Forest} & \textbf{0.42} & \textbf{0.64} & \textbf{97\%} \\
+      \bottomrule
+    \end{tabular}
+  \end{table}
+  \footnotesize
+  \textbf{MAE} = typical size of the daily prediction error, in mm/day. \quad
+  \textbf{RMSE} = similar, but penalises the occasional big miss more heavily.
+  \normalsize
+  \begin{itemize}
+    \item Random Forest was clearly the best --- it explains about 97\% of the
+      day-to-day variation in irrigation demand.
+    \item Linear Regression's straight-line assumption cannot capture the
+      real, more complex weather-to-demand relationships.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{A visual check: predicted vs.\ actual}
+  \centering
+  \fitfig[0.62]{figures/05_actual_vs_predicted.png}
+
+  \small Points closer to the dashed line = better predictions. Linear
+  Regression (left) sometimes predicts \textbf{negative} water demand ---
+  physically impossible. Random Forest (right) never does.
+\end{frame}
+
+\begin{frame}{Model comparison at a glance}
+  \centering
+  \fitfig[0.72]{figures/06_model_comparison.png}
+\end{frame}
+
+\section{What Matters Most}
+
+\begin{frame}{What did the model rely on most?}
+  \begin{itemize}
+    \item A single ``importance'' score can be misleading, so \textbf{three
+      independent measures} were checked against each other:
+    \begin{enumerate}
+      \item \textbf{Correlation} with the target --- simplest baseline.
+      \item \textbf{Random Forest importance} --- how often/effectively a
+        feature was used to build the trees.
+      \item \textbf{Permutation importance} --- scramble one feature at a
+        time on unseen data and see how much accuracy drops.
+    \end{enumerate}
+    \item All three \alert{agree on the same ranking} --- a strong
+      cross-check that the story isn't an artefact of one particular method.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Feature importance --- three views, one story}
+  \centering
+  \fitfig[0.62]{figures/07_feature_importance_comparison.png}
+
+  \small Left: Random Forest importance. Right: permutation importance on
+  unseen test data, with error bars.
+\end{frame}
+
+\begin{frame}{An important honest caveat}
+  \begin{itemize}
+    \item \textbf{Yesterday's irrigation amount} turned out to be, by far, the
+      single most useful piece of information --- on every one of the three
+      measures.
+    \item This makes sense: weather tends to persist for several days in a
+      row, so yesterday's demand is already a good hint about today's.
+    \item But it also means part of the model's high accuracy comes from this
+      simple ``carry-over'' effect, rather than the model fully learning the
+      weather-to-demand relationship from scratch.
+    \item Worth stating openly, rather than waiting to be asked --- so
+      \alert{Experiment 2 removes it} and retrains everything.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Does the seasonal pattern make sense?}
+  \centering
+  \fitfig[0.62]{figures/08_monthly_avg_demand.png}
+
+  \small Peaks in the hot, dry months before the monsoon (March--May); drops
+  sharply during the monsoon, when rain does the work instead --- exactly
+  what farmers and engineers already expect.
+\end{frame}
+
+\section{Experiment 2: Without Yesterday's Demand}
+
+\begin{frame}{Experiment 2: what changed}
+  \begin{itemize}
+    \item \textbf{Removed} yesterday's irrigation amount from the inputs.
+    \item Models now see only the \textbf{7 weather and crop inputs}:
+      rainfall, temperature, humidity, wind speed, solar radiation, crop
+      coefficient, growth stage.
+    \item Everything else kept \textbf{identical}: same 2,000 days, same
+      chronological 80/20 split (1,600 train / 400 test days), same model
+      settings.
+  \end{itemize}
+  \begin{alertblock}{The question}
+    Was the high accuracy really coming from the ``carry-over'' of yesterday's
+    demand, or can the models learn the weather-to-demand relationship on
+    their own?
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Results with vs.\ without yesterday's demand}
+  \begin{table}
+    \centering
+    \small
+    \begin{tabular}{lcccccc}
+      \toprule
+       & \multicolumn{3}{c}{\textbf{With} (8 inputs)} & \multicolumn{3}{c}{\textbf{Without} (7 inputs)} \\
+      \cmidrule(lr){2-4}\cmidrule(lr){5-7}
+      \textbf{Model} & MAE & RMSE & R\textsuperscript{2} & MAE & RMSE & R\textsuperscript{2} \\
+      \midrule
+      Linear Regression & 0.72 & 1.01 & 0.924 & 0.83 & 1.11 & 0.908 \\
+      Decision Tree     & 0.66 & 1.00 & 0.926 & 0.64 & 1.03 & 0.921 \\
+      \textbf{Random Forest} & 0.42 & 0.64 & 0.970 & \textbf{0.40} & 0.70 & \textbf{0.963} \\
+      \bottomrule
+    \end{tabular}
+  \end{table}
+  \footnotesize MAE and RMSE in mm/day, on the same 400 held-out test days.
+  \small
+  \begin{itemize}
+    \item Removing it costs \alert{very little}: Random Forest still explains
+      \textbf{96\%} of the variation (down from 97\%).
+    \item Its typical error (MAE) even drops slightly, 0.42 $\rightarrow$
+      0.40 mm/day; RMSE rises (0.64 $\rightarrow$ 0.70) because of a few
+      larger misses on rainy days.
+    \item Linear Regression loses the most (MAE +15\%): it leaned on the
+      carry-over because it cannot model the curved weather effects.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{With vs.\ without, side by side}
+  \centering
+  \fitfig[0.66]{figures/09_with_vs_without_lag.png}
+
+  \small Grey = with yesterday's demand, teal = without. The tree-based models
+  barely change.
+\end{frame}
+
+\begin{frame}{What the model relies on now}
+  \centering
+  \fitfig[0.56]{figures/12_feature_importance_no_lag.png}
+
+  \small
+  \begin{itemize}
+    \item \textbf{Crop coefficient} and \textbf{solar radiation} now lead,
+      followed by rainfall and temperature: the same drivers as the FAO-56
+      method itself.
+    \item Growth stage adds nothing extra, because the crop coefficient
+      already encodes it.
+  \end{itemize}
+\end{frame}
+
+\section{Comparison with Deep Learning}
+
+\begin{frame}{Three deep-learning models}
+  \small
+  \begin{itemize}
+    \item \textbf{MLP} (multi-layer perceptron): a small neural network
+      on today's 7 inputs (2 hidden layers of 64, $\approx$4.7k weights).
+    \item \textbf{1D-CNN}: scans the \textbf{last 7 days} of the same 7 inputs
+      for short weather patterns ($\approx$18k weights).
+    \item \textbf{LSTM}: a recurrent network that reads the last 7 days
+      in order and keeps a memory of them ($\approx$12.5k weights).
+  \end{itemize}
+  \begin{block}{Kept fair}
+    \footnotesize
+    \begin{itemize}
+      \item Same 7 inputs and the same 400 test days. The sequence models see
+        past \emph{weather}, never past demand.
+      \item Early stopping uses the last 10\% of the training period; the test
+        days are never touched.
+      \item Each network is trained with 3 random seeds and the average is
+        reported.
+      \item Control: a Random Forest given the same 7-day window.
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}{Classical ML vs.\ deep learning (7 inputs)}
+  \begin{table}
+    \centering
+    \small
+    \begin{tabular}{llccc}
+      \toprule
+      & \textbf{Model} & \textbf{MAE} & \textbf{RMSE} & \textbf{R\textsuperscript{2}} \\
+      \midrule
+      \multirow{4}{*}{\rotatebox{90}{\footnotesize Classical}}
+      & Linear Regression & 0.83 & 1.11 & 0.908 \\
+      & Decision Tree & 0.64 & 1.03 & 0.921 \\
+      & Random Forest & 0.40 & 0.70 & 0.963 \\
+      & Random Forest + 7-day window & 0.55 & 0.90 & 0.940 \\
+      \midrule
+      \multirow{3}{*}{\rotatebox{90}{\footnotesize Deep}}
+      & MLP (today only) & 0.28 {\scriptsize$\pm$0.03} & 0.37 & 0.990 \\
+      & 1D-CNN (7-day) & 0.35 {\scriptsize$\pm$0.02} & 0.49 & 0.982 \\
+      & \textbf{LSTM (7-day)} & \textbf{0.26} {\scriptsize$\pm$0.01} & \textbf{0.36} & \textbf{0.990} \\
+      \bottomrule
+    \end{tabular}
+  \end{table}
+  \footnotesize MAE, RMSE in mm/day on the 400 test days; deep models are the
+  mean of 3 seeds ($\pm$ 1 standard deviation).
+  \small
+  \begin{itemize}
+    \item The best network (LSTM) cuts the typical error by \alert{35\%}
+      versus Random Forest (0.40 $\rightarrow$ 0.26 mm/day), and the large
+      misses (RMSE) by about half.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{All models at a glance}
+  \centering
+  \fitfig[0.72]{figures/10_ml_vs_dl_no_lag.png}
+\end{frame}
+
+\begin{frame}{Predicted vs.\ actual: best tree model vs.\ best network}
+  \centering
+  \fitfig[0.6]{figures/11_actual_vs_predicted_no_lag.png}
+
+  \small Random Forest predicts in ``steps'' and has a few large misses on
+  rainy days. The LSTM follows the 1:1 line closely, though it occasionally
+  predicts slightly below zero on dry-spell days (fixed by clipping at 0).
+\end{frame}
+
+\begin{frame}{Is the LSTM overfitting?}
+  \begin{table}
+    \centering
+    \small
+    \begin{tabular}{cccc}
+      \toprule
+      \textbf{Seed} & \textbf{Training days} & \textbf{Validation days} & \textbf{Test days} \\
+       & \footnotesize MAE / R\textsuperscript{2} & \footnotesize MAE / R\textsuperscript{2} & \footnotesize MAE / R\textsuperscript{2} \\
+      \midrule
+      0 & 0.18 / 0.995 & 0.20 / 0.995 & 0.25 / 0.991 \\
+      1 & 0.19 / 0.994 & 0.19 / 0.996 & 0.27 / 0.990 \\
+      2 & 0.19 / 0.995 & 0.20 / 0.996 & 0.27 / 0.990 \\
+      \bottomrule
+    \end{tabular}
+  \end{table}
+  \vspace{-0.6em}
+  \footnotesize
+  \begin{itemize}
+    \item \textbf{Small gap:} test error is only $\approx$0.07 mm/day higher than
+      training error; R\textsuperscript{2} drops just 0.995 $\rightarrow$ 0.990.
+    \item \textbf{Not memorising noise:} the data contains random noise worth
+      $\approx$0.14 mm/day of error that no honest model can remove. Training
+      error (0.19) stays above this floor.
+    \item \textbf{Early stopping worked:} training stopped at epochs 98--118,
+      when validation error stopped improving; all 3 seeds agree.
+    \item The small remaining gap is expected: test days are the
+      \emph{latest} 400 days, later than anything seen in training.
+  \end{itemize}
+  \alert{Verdict: no meaningful overfitting.}
+\end{frame}
+
+\begin{frame}{What the deep-learning comparison tells us}
+  \small
+  \begin{itemize}
+    \item \textbf{Why networks win here:} irrigation demand is a smooth,
+      multiplicative formula (crop coefficient $\times$ atmospheric thirst,
+      minus rain). Neural networks fit smooth curves; trees can only
+      approximate them in steps.
+    \item \textbf{History adds little:} the MLP sees only today, yet is almost
+      as good as the 7-day LSTM (0.28 vs 0.26 mm/day). Today's weather
+      already carries most of the information.
+    \item Giving the Random Forest the 7-day window actually made it
+      \alert{worse} (0.40 $\rightarrow$ 0.55): 49 inputs instead of 7 dilute
+      the useful ones.
+    \item \textbf{Cost:} the networks need input scaling, early stopping and
+      several seeds; Random Forest is simpler to train and explain. For a
+      quick, robust tool, Random Forest remains a strong choice; for best
+      accuracy, a small neural network.
+  \end{itemize}
+\end{frame}
+
+\section{Wrapping Up}
+
+\begin{frame}{Limitations}
+  \begin{itemize}
+    \item Data is synthetic, not from a real, instrumented field.
+    \item Only one crop (maize) and one climate region were modelled.
+    \item A simplified rainfall formula was applied at a daily step, though it
+      was originally meant for monthly totals.
+    \item Experiment 1 leaned heavily on ``yesterday's demand''. Experiment 2
+      shows the models work without it, but true multi-day-ahead forecasting
+      would still need weather \emph{forecasts} as inputs.
+    \item Synthetic data follows the FAO-56 formula exactly, which favours
+      smooth models such as neural networks; real field data is noisier.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Conclusion}
+  \begin{itemize}
+    \item Machine learning can predict daily irrigation water demand very
+      accurately from simple weather and crop inputs \textbf{alone}: without
+      yesterday's demand, Random Forest still reaches R\textsuperscript{2} = 0.96.
+    \item Deep learning goes further: an \textbf{LSTM} reaches
+      R\textsuperscript{2} = 0.99 and cuts the typical error by 35\% (0.26
+      mm/day), and a simple MLP is nearly as good.
+    \item Results consistently make physical sense: right seasonal pattern,
+      right feature priorities (cross-checked three independent ways), no
+      systematic bias.
+    \item This points toward a faster, simpler decision-support tool for
+      irrigation scheduling, without sacrificing physical grounding.
+  \end{itemize}
+\end{frame}
+
+{
+\setbeamertemplate{footline}{}
+\begin{frame}[standout]
+  Thank You \\
+  \vspace{0.5em}
+  {\normalsize Questions?}
+\end{frame}
+}
+
+\end{document}

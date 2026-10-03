@@ -1,0 +1,107 @@
+{
+  "features": [
+    "rainfall_mm",
+    "temperature_C",
+    "humidity_percent",
+    "wind_speed_mps",
+    "solar_radiation_MJ_m2_day",
+    "crop_coefficient",
+    "growth_stage"
+  ],
+  "dropped": "previous_irrigation_mm",
+  "results": {
+    "Linear Regression": {
+      "family": "Classical ML",
+      "MAE": 0.82825414542973,
+      "RMSE": 1.112464978775993,
+      "R2": 0.9079925385373528,
+      "negative_predictions": 13
+    },
+    "Decision Tree": {
+      "family": "Classical ML",
+      "MAE": 0.6443645467304077,
+      "RMSE": 1.0283959958934707,
+      "R2": 0.9213731084392912,
+      "negative_predictions": 0
+    },
+    "Random Forest": {
+      "family": "Classical ML",
+      "MAE": 0.4027276557538646,
+      "RMSE": 0.7011381276981825,
+      "R2": 0.9634525128845395,
+      "negative_predictions": 0
+    },
+    "RF + 7-day window": {
+      "family": "Classical ML",
+      "MAE": 0.5516078467888306,
+      "RMSE": 0.8998445609626393,
+      "R2": 0.939801545106607,
+      "negative_predictions": 0
+    },
+    "MLP": {
+      "family": "Deep learning",
+      "MAE": 0.2762324088033041,
+      "RMSE": 0.36864713688949724,
+      "R2": 0.9897807834197714,
+      "MAE_std": 0.026328306099785436,
+      "RMSE_std": 0.03945138539759475,
+      "R2_std": 0.002218527978200875,
+      "negative_predictions": 1,
+      "epochs": [
+        180,
+        156,
+        71
+      ],
+      "parameters": 4737
+    },
+    "1D-CNN (7-day)": {
+      "family": "Deep learning",
+      "MAE": 0.34597862587293,
+      "RMSE": 0.4885547403219725,
+      "R2": 0.9822060300698755,
+      "MAE_std": 0.022995166913154383,
+      "RMSE_std": 0.02565620561116229,
+      "R2_std": 0.0018913206245703338,
+      "negative_predictions": 6,
+      "epochs": [
+        73,
+        219,
+        85
+      ],
+      "parameters": 18273
+    },
+    "LSTM (7-day)": {
+      "family": "Deep learning",
+      "MAE": 0.26364796528339385,
+      "RMSE": 0.36093046084279035,
+      "R2": 0.9903044095297503,
+      "MAE_std": 0.010036644736046917,
+      "RMSE_std": 0.011962894833827384,
+      "R2_std": 0.0006346482419742325,
+      "negative_predictions": 8,
+      "epochs": [
+        98,
+        105,
+        118
+      ],
+      "parameters": 12545
+    }
+  },
+  "with_previous_irrigation": {
+    "Linear Regression": {
+      "MAE": 0.7170461239568047,
+      "RMSE": 1.0115891815004792,
+      "R2": 0.9239220669604208
+    },
+    "Decision Tree": {
+      "MAE": 0.6558310453645477,
+      "RMSE": 0.9992269689782582,
+      "R2": 0.9257701391116766
+    },
+    "Random Forest": {
+      "MAE": 0.4197243190737113,
+      "RMSE": 0.6393421863753288,
+      "R2": 0.9696109533173972
+    }
+  }
+}
