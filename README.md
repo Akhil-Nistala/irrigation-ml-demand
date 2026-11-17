@@ -38,10 +38,25 @@ irrigation-ml-demand/
     └── app.js
 ```
 
+## Part 3: open questions and practical use
+
+Two scripts extend the Part 2 results (both use the same 7 inputs, chronological split, Random Forest and LSTM setup):
+
+- `src/part3_experiments.py` tests the open questions from Part 2 on real NASA POWER weather: a new site (IIT Hyderabad,
+  with and without retraining), a new crop (cotton), predicting 1/3/7 days ahead without a weather forecast, and noisier
+  targets. Writes `report/part3_summary.json` and the Hyderabad and cotton datasets in `data/`.
+- `src/showcase_analysis.py` measures practical use on the 400 real-weather test days: seasonal water budget, error by
+  season and on peak days, cheap weather stations, and length of training record. Writes `report/showcase_summary.json`
+  and the Random Forest served by the web app (`models/random_forest_nasa.joblib`).
+
+The Part 3 slides (`presentation/WRE_Project_Part3.pptx`) are generated from these results by `presentation/build_deck.js`
+(`npm install pptxgenjs`, then `node presentation/build_deck.js`).
+
 ## Web app
 
-A small local web app lets you enter the 8 input features and get a prediction from the
-trained Random Forest, plus a breakdown of which features drove that specific prediction.
+A small local web app lets you enter the 7 weather and crop inputs and get a prediction from the
+Random Forest trained on real NASA POWER weather (`models/random_forest_nasa.joblib`, written by
+`src/showcase_analysis.py`), plus a breakdown of which inputs drove that specific prediction.
 It also shows the model comparison metrics and feature importances from training.
 
 ```bash
@@ -52,10 +67,10 @@ python backend/app.py
 Then open **http://localhost:5000**. The Flask app serves the API (`/api/meta`, `/api/predict`)
 and the static `frontend/` folder — no separate server or build step needed for the frontend.
 
-- **Predict tab** — sliders/inputs for the 8 features (rainfall, temperature, humidity, wind
-  speed, solar radiation, previous day's irrigation, crop coefficient, growth stage) → predicted
+- **Predict tab** — sliders/inputs for the 7 inputs (rainfall, temperature, humidity, wind
+  speed, solar radiation, crop coefficient, growth stage) → predicted
   `irrigation_demand_mm`, plus a per-feature contribution chart for that specific prediction.
-- **Training tab** — MAE/RMSE/R² for all three trained models, the permutation feature-importance
+- **Training tab** — MAE/RMSE/R² for the three classical models and the LSTM on real weather, the permutation feature-importance
   chart, and the saved training figures.
 - **How it predicts tab** — explains the Random Forest and the tree-path decomposition used to
   compute each prediction's feature contributions.
@@ -119,7 +134,7 @@ Rather than generating random numbers, the dataset follows the internationally s
    - **Net radiation**, itself derived from generated solar radiation together with latitude/day-of-year-dependent extraterrestrial radiation (Ra) and clear-sky radiation (Rso) — the standard FAO-56 Chapter 3 radiation procedure
    - Standard psychrometric constant / saturation-vapour-pressure-curve-slope formulas (elevation-dependent)
 2. **Crop evapotranspiration:** `ETc = ET0 × Kc`, using **FAO-56 Table 12** crop coefficients for **maize** and the **FAO-56 Table 11** four-stage crop calendar (initial / development / mid-season / late-season — 20/35/40/30 days, Kc 0.30 → 1.20 → 1.20 → 0.60).
-3. **Effective rainfall** — the USDA Soil Conservation Service formula (`Pe = 0.6P−10` or `0.8P−25`), applied at a daily step as a documented simplification (the formula was originally derived for monthly totals, but its qualitative behaviour — small showers ≈ 0% effective, large storms partially discounted — is exactly right at any timescale).
+3. **Effective rainfall** — an FAO/AGLW-type dependable-rain formula (`Pe = 0.6P−10` or `0.8P−25`; earlier versions of this README called it USDA-SCS, which was a misnaming). It was derived for monthly totals and is applied here at a daily step as a simplification. Used daily it counts any shower under 16.7 mm as zero: on real Nagpur weather, 522 of 659 rain days give no effective rain and only 15% of rainfall counts. A daily soil water balance (FAO-56 Chapter 8) is the proper fix.
 4. **Net → gross irrigation requirement:** `Net = max(0, ETc − Pe)`; `Gross = Net / Ei`, with irrigation efficiency `Ei = 0.75`.
 
 **Why this isn't "just random data":** weather is generated with realistic monthly climatology (calibrated to a representative central-Indian, subtropical-monsoon location, ~21°N/~310m elevation) plus **AR(1) day-to-day autocorrelation** (so heatwaves/wet spells persist for several days, as real weather does), and rainfall is a proper stochastic process (rain-day probability × Gamma-distributed amount, with an occasional monsoon heavy-storm tail) — not i.i.d. noise. The target variable is then computed by literally running the FAO-56 equations on this generated weather, plus a small final noise term so the ML task is genuinely non-trivial (not a lookup table).
@@ -199,7 +214,7 @@ Everything uses `random_state=42` (or an equivalent seeded `numpy.random.default
 
 1. Allen, R.G., Pereira, L.S., Raes, D., Smith, M. (1998). *Crop Evapotranspiration – Guidelines for Computing Crop Water Requirements.* FAO Irrigation and Drainage Paper No. 56.
 2. Doorenbos, J., Pruitt, W.O. (1977). *Guidelines for Predicting Crop Water Requirements.* FAO Irrigation and Drainage Paper No. 24/25.
-3. USDA Soil Conservation Service (1970). *Irrigation Water Requirements.* Technical Release No. 21.
+3. Smith, M. (1992). *CROPWAT: A Computer Program for Irrigation Planning and Management.* FAO Irrigation and Drainage Paper No. 46.
 4. Pedregosa, F. et al. (2011). Scikit-learn: Machine Learning in Python. *JMLR*, 12, 2825–2830.
 
 Full reference list with context: `report/term_project_report.md`, Section 10.

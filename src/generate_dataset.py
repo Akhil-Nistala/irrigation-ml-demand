@@ -12,9 +12,11 @@ Physical basis
   calendar of FAO-56 Table 11 (subhumid climate, arid/semi-arid irrigation
   practice): Kc_ini=0.30, Kc_mid=1.20, Kc_end=0.60, stage lengths
   20 / 35 / 40 / 30 days (initial / development / mid-season / late-season).
-- Effective rainfall: USDA Soil Conservation Service empirical formula
-  (USDA-SCS, 1970; also reproduced in FAO Irrigation & Drainage Paper 25,
-  Doorenbos & Pruitt, 1977):
+- Effective rainfall: FAO/AGLW-type "dependable rain" empirical formula
+  (Smith, 1992, CROPWAT, FAO I&D Paper 46 gives 0.6P-10 / 0.8P-24 with the
+  break at 70 mm/month; ours uses 0.8P-25 above 75 mm). Earlier versions of
+  this project called it USDA-SCS; that was a misnaming. The USDA-SCS method
+  in CROPWAT is Pe = P(125 - 0.2P)/125 for P <= 250 mm/month.
       Pe = 0.6P - 10   for P <= 75 (mm/period)
       Pe = 0.8P - 25   for P  > 75 (mm/period)
   NOTE: this formula was developed for MONTHLY/decadal rainfall totals. It is
@@ -171,7 +173,8 @@ def crop_coefficient_and_stage(day_in_cycle):
 
 
 def effective_rainfall_scs(P):
-    """USDA-SCS empirical effective-rainfall formula, applied at daily step (see module docstring)."""
+    """FAO/AGLW-type dependable-rain formula, applied at a daily step (see module docstring).
+    The function name is historical: the formula is not the USDA-SCS method."""
     Pe = np.where(P > 75, 0.8 * P - 25, 0.6 * P - 10)
     Pe = np.clip(Pe, 0, None)
     return np.minimum(Pe, P)

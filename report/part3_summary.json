@@ -1,0 +1,127 @@
+{
+  "note": "MAE in mm/day on the 400 test days (20 May 2023 - 22 Jun 2024); predictions clipped at zero; LSTM = mean of 3 per-seed MAEs. Noise experiment scored against the noise-free FAO-56 demand.",
+  "new_site": {
+    "Nagpur (trained here)": {
+      "RF": 0.4232065175810732,
+      "LSTM": 0.21535734608081905
+    },
+    "Hyderabad, Nagpur model": {
+      "RF": 0.6078329269615148,
+      "LSTM": 0.25982296525808973
+    },
+    "Hyderabad, retrained": {
+      "RF": 0.5123284112116424,
+      "LSTM": 0.24733834269753738
+    }
+  },
+  "new_crop": {
+    "Maize (trained on maize)": {
+      "RF": 0.4232065175810732,
+      "LSTM": 0.21535734608081905
+    },
+    "Cotton, maize model": {
+      "RF": 0.5025910663639919,
+      "LSTM": 0.21170696890348636
+    },
+    "Cotton, retrained": {
+      "RF": 0.5430266759179007,
+      "LSTM": 0.2425363105992381
+    }
+  },
+  "days_ahead": {
+    "0": {
+      "RF": 0.4232065175810732,
+      "LSTM": 0.21535734608081905,
+      "persistence": null
+    },
+    "1": {
+      "RF": 0.9997468277859676,
+      "LSTM": 0.9816995919535493,
+      "persistence": 0.9535925000000001
+    },
+    "3": {
+      "RF": 1.1420410767970492,
+      "LSTM": 1.2291370722506598,
+      "persistence": 1.56093
+    },
+    "7": {
+      "RF": 1.3312018066521523,
+      "LSTM": 1.4879946849975572,
+      "persistence": 1.896555
+    }
+  },
+  "noisy_records": {
+    "0.18": {
+      "RF": 0.3994436344402661,
+      "LSTM": 0.1607203236922162,
+      "record_error": 0.13776250000000004
+    },
+    "0.5": {
+      "RF": 0.39937349882198603,
+      "LSTM": 0.23920340883754695,
+      "record_error": 0.37855751492709755
+    },
+    "1.0": {
+      "RF": 0.4535681822939306,
+      "LSTM": 0.40071218713799617,
+      "record_error": 0.7563092288970327
+    }
+  },
+  "context": {
+    "hyderabad": {
+      "lat": 17.59,
+      "lon": 78.12,
+      "elevation_m": 565.46,
+      "mean_demand": 5.6283199999999995,
+      "annual_rain_mm": 905.8693087500001,
+      "mean_et0": 5.0641615,
+      "mean_temp": 25.985505,
+      "test_mean_demand": 5.8627575
+    },
+    "nagpur": {
+      "mean_demand": 5.1731915,
+      "annual_rain_mm": 1323.3044025000002,
+      "mean_et0": 4.764489,
+      "mean_temp": 26.662465,
+      "test_mean_demand": 5.34159
+    },
+    "cotton": {
+      "mean_demand": 5.122317999999999,
+      "test_mean_demand": 5.013005,
+      "cycle_days": 195,
+      "kc": [
+        0.35,
+        1.15,
+        0.6
+      ]
+    },
+    "hyderabad_monthly_demand": [
+      4.009,
+      4.428,
+      8.395,
+      10.9,
+      7.96,
+      4.729,
+      5.148,
+      5.771,
+      3.171,
+      2.372,
+      4.088,
+      5.11
+    ],
+    "nagpur_monthly_demand": [
+      3.199,
+      3.758,
+      7.523,
+      10.472,
+      8.918,
+      5.064,
+      3.825,
+      4.218,
+      2.872,
+      2.411,
+      3.786,
+      4.383
+    ]
+  }
+}

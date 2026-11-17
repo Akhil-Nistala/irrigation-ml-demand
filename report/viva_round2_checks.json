@@ -1,0 +1,62 @@
+{
+  "cheap_sensors_with_ra": {
+    "cheap set": {
+      "RF": 0.7410408062673507,
+      "LSTM": 0.7414229909578959
+    },
+    "cheap set + Ra": {
+      "RF": 0.7342804094898348,
+      "LSTM": 0.7187456687291464
+    }
+  },
+  "rf_at_kc": {
+    "1.0": 9.432743102352799,
+    "1.1": 10.979013630485012,
+    "1.2": 11.174223424132684,
+    "1.3": 11.174223424132684,
+    "1.4": 11.174223424132684,
+    "training_kc_max": 1.2
+  },
+  "treeshap_demo_day": {
+    "rainfall_mm": 0.1885026407103186,
+    "temperature_C": 2.391202873865474,
+    "humidity_percent": -0.011415150038126234,
+    "wind_speed_mps": -0.3120214194946955,
+    "solar_radiation_MJ_m2_day": 1.4909786075304898,
+    "crop_coefficient": 2.281345854242466,
+    "growth_stage": 0.014083152733469537
+  },
+  "effective_rain_mm": {
+    "5": {
+      "ours": 0.0,
+      "usda_scs_cropwat": 4.96,
+      "fao_aglw": 0.0
+    },
+    "10": {
+      "ours": 0.0,
+      "usda_scs_cropwat": 9.84,
+      "fao_aglw": 0.0
+    },
+    "20": {
+      "ours": 2.0,
+      "usda_scs_cropwat": 19.36,
+      "fao_aglw": 2.0
+    },
+    "30": {
+      "ours": 8.0,
+      "usda_scs_cropwat": 28.56,
+      "fao_aglw": 8.0
+    },
+    "80": {
+      "ours": 39.0,
+      "usda_scs_cropwat": 69.76,
+      "fao_aglw": 40.0
+    }
+  },
+  "synthetic_cap_recount": {
+    "train": 199,
+    "test": 62,
+    "floor_days": 0,
+    "real_floor_or_cap": "real target: ET0 only clipped at 0"
+  }
+}

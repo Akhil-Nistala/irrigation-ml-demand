@@ -6,7 +6,6 @@ const STEP_OVERRIDES = {
   humidity_percent: 1,
   wind_speed_mps: 0.1,
   solar_radiation_MJ_m2_day: 0.1,
-  previous_irrigation_mm: 0.1,
   crop_coefficient: 0.01,
 };
 
@@ -21,6 +20,7 @@ const MODEL_COLORS = {
   "Linear Regression": "var(--series-1)",
   "Decision Tree": "var(--series-2)",
   "Random Forest": "var(--series-3)",
+  "LSTM (7-day)": "var(--series-4, #7a5195)",
 };
 
 let META = null;
@@ -72,7 +72,12 @@ function buildForm(features) {
     }
 
     const step = STEP_OVERRIDES[f.name] ?? 0.1;
-    const defaultVal = Math.round(f.mean / step) * step;
+    const decimals = (String(step).split(".")[1] || "").length;
+    const defaultVal = (Math.round(f.mean / step) * step).toFixed(decimals); // avoid float noise like 26.700000000000003
+    // snap the range to the step grid: with an unrounded min (e.g. 0.73 m/s), values like 1.5 fail the browser's
+    // step validation and the form silently refuses to submit
+    const min = (Math.floor(f.min / step) * step).toFixed(decimals);
+    const max = (Math.ceil(f.max / step) * step).toFixed(decimals);
 
     wrap.innerHTML = `
       <div class="field-top">
@@ -81,9 +86,9 @@ function buildForm(features) {
       </div>
       <div class="field-value-row">
         <input type="range" id="in-${f.name}" data-feature="${f.name}"
-               min="${f.min}" max="${f.max}" step="${step}" value="${defaultVal}">
+               min="${min}" max="${max}" step="${step}" value="${defaultVal}">
         <input type="number" data-feature="${f.name}" data-mirror="in-${f.name}"
-               min="${f.min}" max="${f.max}" step="${step}" value="${defaultVal}">
+               min="${min}" max="${max}" step="${step}" value="${defaultVal}">
       </div>
     `;
     container.appendChild(wrap);
