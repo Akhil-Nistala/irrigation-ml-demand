@@ -21,13 +21,13 @@ from flask import Flask, jsonify, request, send_from_directory
 ROOT_DIR = Path(__file__).resolve().parent.parent
 FRONTEND_DIR = ROOT_DIR / "frontend"
 MODELS_DIR = ROOT_DIR / "models"
-DATA_PATH = ROOT_DIR / "data" / "irrigation_dataset.csv"
+DATA_PATH = ROOT_DIR / "data" / "irrigation_dataset_nasa_power.csv"
 FIGURES_DIR = ROOT_DIR / "figures"
-IMPORTANCE_CSV = ROOT_DIR / "report" / "feature_importance_summary.csv"
+IMPORTANCE_CSV = ROOT_DIR / "report" / "nasa_feature_importance.csv"
 
 FEATURES = [
     "rainfall_mm", "temperature_C", "humidity_percent", "wind_speed_mps",
-    "solar_radiation_MJ_m2_day", "previous_irrigation_mm", "crop_coefficient", "growth_stage",
+    "solar_radiation_MJ_m2_day", "crop_coefficient", "growth_stage",
 ]
 
 FEATURE_META = {
@@ -36,17 +36,21 @@ FEATURE_META = {
     "humidity_percent": {"label": "Relative humidity", "unit": "%"},
     "wind_speed_mps": {"label": "Wind speed", "unit": "m/s"},
     "solar_radiation_MJ_m2_day": {"label": "Solar radiation", "unit": "MJ/m²/day"},
-    "previous_irrigation_mm": {"label": "Previous day's irrigation", "unit": "mm"},
     "crop_coefficient": {"label": "Crop coefficient (Kc)", "unit": ""},
     "growth_stage": {"label": "Growth stage", "unit": "1=initial, 2=development, 3=mid, 4=late"},
 }
 
 app = Flask(__name__, static_folder=str(FRONTEND_DIR), static_url_path="")
+app.json.sort_keys = False  # keep the model order of SHOWN_MODELS in /api/meta
 
 # ---- Load once at startup ------------------------------------------------
-model = joblib.load(MODELS_DIR / "random_forest.joblib")
-with open(MODELS_DIR / "metrics.json") as f:
-    metrics = json.load(f)
+# Final project setup: 7 weather and crop inputs, trained on real NASA POWER weather for Nagpur
+# (model written by src/showcase_analysis.py; metrics from src/no_lag_experiment.py --tag nasa).
+model = joblib.load(MODELS_DIR / "random_forest_nasa.joblib")
+SHOWN_MODELS = ["Linear Regression", "Decision Tree", "Random Forest", "LSTM (7-day)"]
+with open(MODELS_DIR / "metrics_nasa.json") as f:
+    _results = json.load(f)["results"]
+metrics = {m: {k: _results[m][k] for k in ("MAE", "RMSE", "R2")} for m in SHOWN_MODELS}
 importance_df = pd.read_csv(IMPORTANCE_CSV, index_col=0)
 dataset = pd.read_csv(DATA_PATH)
 
@@ -103,7 +107,7 @@ def meta():
             for name in FEATURES
         ],
         "model_comparison": metrics,
-        "active_model": "Random Forest",
+        "active_model": "Random Forest (real NASA POWER weather, 7 inputs)",
         "feature_importance": {
             "features": list(importance_df.index),
             "rf_mdi_importance": importance_df["rf_mdi_importance"].round(4).tolist(),

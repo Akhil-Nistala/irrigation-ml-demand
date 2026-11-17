@@ -9,7 +9,7 @@ Weather (observed / satellite-derived, NASA POWER Agroclimatology community, dai
 Same location (21.15 N, 79.09 E, ~ Nagpur), same 2,000 days from 2019-01-01, same columns as data/irrigation_dataset.csv.
 
 The target is computed with the same FAO-56 pipeline as src/generate_dataset.py (Penman-Monteith ET0,
-maize Kc calendar, USDA-SCS effective rainfall, 75% efficiency, N(0, 0.18) noise, seed 42), so what changes versus the
+maize Kc calendar, FAO/AGLW-type effective rainfall, 75% efficiency, N(0, 0.18) noise, seed 42), so what changes versus the
 synthetic dataset is the weather. Two deliberate differences: real daily Tmax/Tmin replace the synthetic monthly diurnal
 range, and ET0 is not capped at 8 mm/day (real pre-monsoon days exceed it).
 

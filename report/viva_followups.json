@@ -1,0 +1,97 @@
+{
+  "persistence_mae": {
+    "synthetic": 1.1377475000000001,
+    "nasa": 0.9535925000000001
+  },
+  "synthetic_et0_cap": {
+    "train_days_at_cap": 199,
+    "test_days_at_cap": 62,
+    "test_days_at_cap_apr_may_2024": 41,
+    "plateau_mm": 12.799999999999999
+  },
+  "validation_block": {
+    "start": "2022-12-12",
+    "end": "2023-05-19",
+    "days": 159
+  },
+  "bootstrap_rf_minus_lstm": {
+    "point": 0.21518825000000003,
+    "ci95": [
+      0.15261806875,
+      0.28196078750000003
+    ],
+    "relative_point": 0.508472543759795,
+    "relative_ci95": [
+      0.421131949961368,
+      0.5741871576074871
+    ],
+    "share_of_days_lstm_closer": 0.72,
+    "block_days": 14,
+    "resamples": 10000
+  },
+  "physics_informed_linear": {
+    "synthetic": {
+      "Kc x weather": 0.5625108240990053,
+      "Kc x weather + SCS rain term": 0.5735101014763138,
+      "plain 7 inputs": 0.82825414542973
+    },
+    "nasa": {
+      "Kc x weather": 0.6339095552756921,
+      "Kc x weather + SCS rain term": 0.6319265573212,
+      "plain 7 inputs": 0.9125151119634015
+    }
+  },
+  "lr_negative_predictions": {
+    "synthetic": 13,
+    "nasa": 13
+  },
+  "tmax_tmin_inputs": {
+    "7 inputs": {
+      "RF": 0.42400196574199245,
+      "MLP": 0.2677398721377055,
+      "LSTM": 0.2202779253323873
+    },
+    "9 inputs (+Tmax, Tmin)": {
+      "RF": 0.38676589902314346,
+      "MLP": 0.27074162662029266,
+      "LSTM": 0.22837733229001364
+    }
+  },
+  "seasonal_clock_inputs": {
+    "7 inputs + Ra": {
+      "RF": 0.43790554341067073,
+      "MLP": 0.2776126265525818,
+      "LSTM": 0.21405269702275595
+    },
+    "9 inputs + Ra": {
+      "RF": 0.38956759368616756,
+      "MLP": 0.26137660443782806,
+      "LSTM": 0.23884834349155426
+    }
+  },
+  "lstm_window_days": {
+    "1": 0.19615226487318674,
+    "3": 0.20099020500977835,
+    "7": 0.2202779253323873
+  },
+  "climatology_mae": {
+    "day_of_year_mean": 2.737589120864868,
+    "smoothed_15_day": 2.6909145882138783,
+    "typical_et0_x_kc_minus_typical_pe": 1.393214779228043,
+    "typical_et0_x_kc_no_rain": 1.2238695521755105
+  },
+  "fao56_missing_data_pm": {
+    "raw": 0.8433792530830899,
+    "calibrated_on_training_days": 0.7646740651364895
+  },
+  "unseen_period": {
+    "start": "2024-06-23",
+    "end": "2026-11-10",
+    "days": 871,
+    "mean_demand": 5.072089141792006,
+    "LR": 0.8475909376955857,
+    "RF": 0.4475837766294456,
+    "LSTM": 0.21895804504553476,
+    "persistence": 0.9222222990955079
+  }
+}
